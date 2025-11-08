@@ -2,14 +2,6 @@ import { writeFile } from "fs/promises";
 import { join } from "path";
 import { PagoElectronico } from "../types/cep.types";
 
-/**
- * Generates a comma-separated TXT file in LF (Unix) line ending format
- * from an array of electronic payments, preserving exact monetary amounts.
- *
- * @param payments - Array of payment records to export
- * @param jobId - Unique identifier for the job (used in filename)
- * @returns Promise resolving to the absolute file path of the generated TXT
- */
 export async function generateTxtFile(payments: PagoElectronico[], jobId: string): Promise<string> {
   const filename = `cep_${jobId}.txt`;
   const filepath = join(__dirname, "../..", "outputs", filename);

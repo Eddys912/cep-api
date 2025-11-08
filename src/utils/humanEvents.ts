@@ -37,8 +37,6 @@ export async function scrollHuman(page: Page) {
 }
 
 export async function waitForRecaptcha(page: Page, timeout: number = 15000): Promise<boolean> {
-  console.log("🔍 Esperando resolución de reCAPTCHA invisible...");
-
   try {
     await page.waitForFunction(
       () => {
@@ -47,11 +45,8 @@ export async function waitForRecaptcha(page: Page, timeout: number = 15000): Pro
       },
       { timeout }
     );
-
-    console.log("✅ reCAPTCHA resuelto automáticamente");
     return true;
   } catch (error) {
-    console.log("⚠️ reCAPTCHA no se resolvió automáticamente, puede requerir intervención");
     return false;
   }
 }
