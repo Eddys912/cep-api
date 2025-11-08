@@ -12,5 +12,5 @@ app.use(routes);
 mkdir("outputs", { recursive: true }).catch(console.error);
 
 app.listen(PORT, () => {
-  console.log(`✓ API corriendo en el puerto:${PORT}`);
+  console.log(`✅ API corriendo en el puerto:${PORT}`);
 });
