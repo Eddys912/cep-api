@@ -1,0 +1,40 @@
+# 1. GENERATED AND BUILD ARTIFACTS
+/dist
+/build
+/temp
+/outputs
+/downloads
+/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+error_no_descarga_*
+
+# 2. DEPENDENCIES AND PACKAGE MANAGERS
+node_modules/
+.pnpm-store
+npm-shrinkwrap.json
+
+# 3. ENVIRONMENT AND CONFIGURATION
+.env
+.env.*
+!.env.example
+
+# 4. EDITOR AND IDE CONFIGURATION
+*~
+.*.swp
+*.sublime-*
+.zed/
+.idea/
+.vscode/
+nbproject/
+
+# 5. OPERATING SYSTEM AND TEMPORARY FILES
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+*.bak
+.DS_Store
+.AppleDouble
+.LSOverride
