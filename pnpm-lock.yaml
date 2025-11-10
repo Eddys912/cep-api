@@ -20,9 +20,6 @@ importers:
       playwright:
         specifier: 1.56.1
         version: 1.56.1
-      tsc:
-        specifier: 2.0.4
-        version: 2.0.4
     devDependencies:
       '@types/express':
         specifier: 5.0.5
@@ -595,10 +592,6 @@ packages:
         optional: true
       '@swc/wasm':
         optional: true
-
-  tsc@2.0.4:
-    resolution: {integrity: sha512-fzoSieZI5KKJVBYGvwbVZs/J5za84f2lSTLPYf6AGiIf43tZ3GNrI1QzTLcjtyDDP4aLxd46RTZq1nQxe7+k5Q==}
-    hasBin: true
 
   tsconfig@7.0.0:
     resolution: {integrity: sha512-vZXmzPrL+EmC4T/4rVlT2jNVMWCi/O4DIiSj3UHg1OE5kCKbk4mfrXc6dZksLgRM/TZlKnousKH9bbTazUWRRw==}
@@ -1270,8 +1263,6 @@ snapshots:
       typescript: 5.9.3
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
-
-  tsc@2.0.4: {}
 
   tsconfig@7.0.0:
     dependencies:
