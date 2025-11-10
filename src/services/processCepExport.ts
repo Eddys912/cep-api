@@ -5,8 +5,9 @@ import { generateTxtFile } from "../utils/generateTxtFile";
 import { automateBanxicoWithPause } from "./BanxicoAutomation";
 
 const supabase: SupabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_KEY!);
-const BROWSER_ORDER = [BrowserType.CHROMIUM, BrowserType.FIREFOX, BrowserType.WEBKIT];
+const BROWSER_ORDER = [BrowserType.WEBKIT, BrowserType.CHROMIUM, BrowserType.FIREFOX];
 const payments_table = process.env.PAYMENTS_TABLE;
+
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -49,7 +50,7 @@ export async function processCepExport(
 
     const filepath = await generateTxtFile(pagos, jobId);
     job.input_file_path = filepath;
-    console.log(`✓ Archivo TXT generado: ${filepath}`);
+    console.log(`✅ Archivo TXT generado: ${filepath}`);
 
     let automationResult = null;
     let lastError = null;
@@ -63,9 +64,9 @@ export async function processCepExport(
         console.log(`🔄 Intento ${attempt}/${BROWSER_ORDER.length}: Usando navegador ${browserType.toUpperCase()}`);
         console.log(`======================================================`);
 
-        // La función interna maneja los reintentos de subida (3 intentos)
-        // Aumentamos la pausa del captcha en cada cambio de navegador
-        const pauseSeconds = 20 + i * 10;
+        // Solo aumentar pausa cuando cambiamos de navegador (i > 0)
+        // La primera vez (Chromium) usa pausa base de 10 segundos
+        const pauseSeconds = i === 0 ? 10 : 20 + (i - 1) * 15;
 
         automationResult = await automateBanxicoWithPause(
           filepath,
@@ -84,7 +85,7 @@ export async function processCepExport(
         console.error(`❌ Fallo completo con ${browserType.toUpperCase()}:`, errorMsg);
 
         if (i < BROWSER_ORDER.length - 1) {
-          const delay = (i + 1) * 10000;
+          const delay = (i + 1) * 8000;
           console.log(`⏳ Esperando ${delay / 1000} segundos antes de probar ${BROWSER_ORDER[i + 1].toUpperCase()}...`);
           await sleep(delay);
         }

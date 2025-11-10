@@ -200,7 +200,7 @@ class BanxicoAutomation {
     filepath: string,
     email: string,
     format: FormatType = FormatType.BOTH,
-    pauseSeconds: number = 20,
+    pauseSeconds: number = 10,
     browserType: BrowserType = BrowserType.CHROMIUM,
     useHeadless: boolean = true
   ): Promise<{ success: boolean; message: string; token?: string; downloadPath: string }> {
@@ -316,7 +316,12 @@ class BanxicoAutomation {
         waitUntil: "domcontentloaded",
         timeout: 30000,
       });
-      await page.waitForLoadState("networkidle");
+
+      try {
+        await page.waitForLoadState("networkidle", { timeout: 10000 });
+      } catch {
+        console.log("⚠️ NetworkIdle no alcanzado, continuando...");
+      }
       await page.waitForTimeout(3000);
 
       // --- FASE 1: Subida del Archivo (con reintentos) ---
@@ -408,7 +413,7 @@ export async function automateBanxicoWithPause(
   filepath: string,
   email: string,
   format: FormatType = FormatType.BOTH,
-  pauseSeconds: number = 25,
+  pauseSeconds: number = 20,
   browserType: BrowserType = BrowserType.CHROMIUM,
   useHeadless: boolean = true
 ): Promise<{ success: boolean; message: string; token?: string; downloadPath: string }> {
