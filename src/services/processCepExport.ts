@@ -64,8 +64,8 @@ export async function processCepExport(
         console.log(`🔄 Intento ${attempt}/${BROWSER_ORDER.length}: Usando navegador ${browserType.toUpperCase()}`);
         console.log(`======================================================`);
 
-        // Solo aumentar pausa cuando cambiamos de navegador (i > 0)
-        // La primera vez (Chromium) usa pausa base de 10 segundos
+        // WebKit (primer intento): pausa base de 10s
+        // Navegadores subsiguientes: pausas progresivamente mayores
         const pauseSeconds = i === 0 ? 10 : 20 + (i - 1) * 15;
 
         automationResult = await automateBanxicoWithPause(

@@ -316,12 +316,7 @@ class BanxicoAutomation {
         waitUntil: "domcontentloaded",
         timeout: 30000,
       });
-
-      try {
-        await page.waitForLoadState("networkidle", { timeout: 10000 });
-      } catch {
-        console.log("⚠️ NetworkIdle no alcanzado, continuando...");
-      }
+      await page.waitForLoadState("networkidle");
       await page.waitForTimeout(3000);
 
       // --- FASE 1: Subida del Archivo (con reintentos) ---
@@ -351,6 +346,8 @@ class BanxicoAutomation {
       if (!token) throw new Error("Falló la subida del archivo después de 3 reintentos internos.");
 
       // --- FASE 2: Consulta y Descarga (con reintentos) ---
+
+      // Primero regresar a inicio desde la página del token
       await page.waitForTimeout(Math.random() * 1000 + 500);
       await page.click('input[type="button"][value="Regresar"]');
       await page.waitForTimeout(2000);
@@ -370,11 +367,17 @@ class BanxicoAutomation {
 
             try {
               await page.click('a[href="inicio.do"]');
+              await page.waitForTimeout(1000);
             } catch {
               await page.goto("https://www.banxico.org.mx/cep-scl/inicio.do", {
                 waitUntil: "domcontentloaded",
                 timeout: 30000,
               });
+              try {
+                await page.waitForLoadState("networkidle", { timeout: 10000 });
+              } catch {
+                console.log("⚠️ NetworkIdle no alcanzado en regreso a inicio, continuando...");
+              }
             }
 
             const waitTime = intento * 6000 + Math.random() * 3000;
@@ -414,7 +417,7 @@ export async function automateBanxicoWithPause(
   email: string,
   format: FormatType = FormatType.BOTH,
   pauseSeconds: number = 20,
-  browserType: BrowserType = BrowserType.CHROMIUM,
+  browserType: BrowserType = BrowserType.WEBKIT,
   useHeadless: boolean = true
 ): Promise<{ success: boolean; message: string; token?: string; downloadPath: string }> {
   const automation = new BanxicoAutomation();
