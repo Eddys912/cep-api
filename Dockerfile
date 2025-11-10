@@ -1,4 +1,6 @@
-FROM mcr.microsoft.com/playwright/node:lts
+FROM node:20-bookworm
+
+RUN pnpm exec playwright@1.56.1 install --with-deps
 
 WORKDIR /app
 
