@@ -1,10 +1,9 @@
 import { writeFile } from "fs/promises";
-import { join } from "path";
-import { PagoElectronico } from "../types/cep.types";
+import { ElectronicPayment } from "../types/cep.types";
+import { FileManager } from "./fileManager";
 
-export async function generateTxtFile(payments: PagoElectronico[], jobId: string): Promise<string> {
-  const filename = `cep_${jobId}.txt`;
-  const filepath = join(__dirname, "../..", "outputs", filename);
+export async function generateTxtFile(payments: ElectronicPayment[], cepId: string): Promise<string> {
+  const filepath = FileManager.getOutputPath(cepId);
 
   const lines = payments.map((payment) => {
     const paymentDate = payment.fecha_pago.split("T")[0];
@@ -13,7 +12,7 @@ export async function generateTxtFile(payments: PagoElectronico[], jobId: string
     amountStr = amountStr.replace(/,/g, "");
 
     if (!/^-?\d+(\.\d+)?$/.test(amountStr)) {
-      throw new Error(`Invalid amount format: "${payment.monto}" for clave_rastreo ${payment.clave_rastreo}`);
+      throw new Error(`Formato de monto inválido: "${payment.monto}" para clave_rastreo ${payment.clave_rastreo}`);
     }
 
     return `${paymentDate},${payment.clave_rastreo},${payment.clave_institucion_emisora},${payment.clave_institucion_receptora},${payment.cuenta_beneficiario},${amountStr}`;
