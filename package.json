@@ -5,21 +5,18 @@
   "main": "index.js",
   "scripts": {
     "dev": "ts-node-dev src/index.ts",
-    "build": "tsc",
-    "start": "node dist/index.js",
-    "test": "ts-node-dev --respawn false src/testManual.ts"
+    "prebuild": "npx playwright install webkit chromium firefox",
+    "build": "npx tsc",
+    "start": "node dist/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "2captcha-ts": "^2.4.1",
     "@supabase/supabase-js": "2.78.0",
-    "@types/multer": "^2.0.0",
     "dotenv": "17.2.3",
     "express": "5.1.0",
-    "multer": "^2.0.2",
     "playwright": "1.56.1",
     "tsc": "2.0.4"
   },
