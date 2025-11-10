@@ -33,7 +33,7 @@ export async function scrollHuman(page: Page) {
       behavior: "smooth",
     });
   }, scrollAmount);
-  await page.waitForTimeout(Math.random() * 900 + 500);
+  await page.waitForTimeout(Math.random() * 500 + 300);
 }
 
 export async function waitForRecaptcha(page: Page, timeout: number = 15000): Promise<boolean> {
@@ -52,18 +52,18 @@ export async function waitForRecaptcha(page: Page, timeout: number = 15000): Pro
 }
 
 export async function simulateHumanActivity(page: Page) {
-  for (let i = 0; i < 3; i++) {
-    const x = Math.random() * 800 + 100;
-    const y = Math.random() * 400 + 100;
+  for (let i = 0; i < 2; i++) {
+    const x = Math.random() * 600 + 100;
+    const y = Math.random() * 300 + 100;
     await page.mouse.move(x, y);
-    await page.waitForTimeout(Math.random() * 1000 + 500);
+    await page.waitForTimeout(Math.random() * 500 + 300);
   }
 
   await page.evaluate(() => {
     window.scrollTo({
-      top: Math.random() * 300,
+      top: Math.random() * 200,
       behavior: "smooth",
     });
   });
-  await page.waitForTimeout(Math.random() * 1500 + 1000);
+  await page.waitForTimeout(Math.random() * 800 + 500);
 }
