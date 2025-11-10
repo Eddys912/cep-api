@@ -1,4 +1,4 @@
-import { CepTypeStatus, FormatType } from "./global.types";
+import { CepTypeStatus, FormatType } from "./global.enums";
 
 export interface ElectronicPayment {
   fecha_pago: string;
@@ -33,26 +33,26 @@ export interface CepStatus {
     success: boolean;
     message: string;
     token?: string;
-    downloadPath: string;
+    download_path: string;
   };
   error?: string;
 }
 
 export interface CepResponse {
-  cepId: string;
+  cep_id: string;
   message: string;
   status: CepTypeStatus;
 }
 
 export interface CepStatusResponse {
-  cepId: string;
+  cep_id: string;
   status: CepTypeStatus;
   created_at: string;
   completed_at?: string;
   records_processed?: number;
   token?: string;
   error?: string;
-  downloadAvailable: boolean;
+  download_available: boolean;
 }
 
 export interface CepListResponse {
@@ -61,7 +61,7 @@ export interface CepListResponse {
 }
 
 export interface CepSummary {
-  cepId: string;
+  cep_id: string;
   status: CepTypeStatus;
   created_at: string;
   completed_at?: string;
