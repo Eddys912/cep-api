@@ -1,6 +1,6 @@
 import { CepStatus } from "../types/cep.types";
-import { BrowserType, CepTypeStatus, FormatType } from "../types/global.types";
-import { BanxicoAutomation } from "./BanxicoAutomation";
+import { BrowserType, CepTypeStatus, FormatType } from "../types/global.enums";
+import { BanxicoAutomation } from "./banxico-automation.service";
 
 const BROWSER_ORDER = [BrowserType.WEBKIT, BrowserType.CHROMIUM, BrowserType.FIREFOX];
 
@@ -13,7 +13,7 @@ export async function runBanxicoAutomation(
   ceps: Map<string, CepStatus>,
   filepath: string,
   email: string,
-  formato: FormatType = FormatType.BOTH
+  format: FormatType = FormatType.BOTH
 ): Promise<void> {
   const cep = ceps.get(cepId);
   if (!cep) throw new Error("CEP no encontrado");
@@ -29,7 +29,7 @@ export async function runBanxicoAutomation(
       console.log(`🔄 Intento ${attempt}/${BROWSER_ORDER.length}: ${browserType.toUpperCase()}`);
       const pauseSeconds = i === 0 ? 10 : 20 + (i - 1) * 15;
       const automation = new BanxicoAutomation(cepId);
-      automationResult = await automation.automate(filepath, email, formato, pauseSeconds, browserType, true);
+      automationResult = await automation.automate(filepath, email, format, pauseSeconds, browserType, true);
       break;
     } catch (error: unknown) {
       lastError = error;
@@ -45,5 +45,5 @@ export async function runBanxicoAutomation(
   cep.token = automationResult.token;
   cep.status = CepTypeStatus.COMPLETED;
   cep.result = automationResult;
-  cep.banxico_result_path = automationResult.downloadPath;
+  cep.banxico_result_path = automationResult.download_path;
 }

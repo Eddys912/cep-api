@@ -1,7 +1,7 @@
 import { Browser, BrowserContext, chromium, firefox, Page, webkit } from "playwright";
-import { BrowserType, FormatType } from "../types/global.types";
-import { FileManager } from "../utils/fileManager";
-import { moveMouseHuman, scrollHuman, simulateHumanActivity, waitForRecaptcha } from "../utils/humanEvents";
+import { BrowserType, FormatType } from "../types/global.enums";
+import { FileManager } from "../utils/file-manager";
+import { moveMouseHuman, scrollHuman, simulateHumanActivity, waitForRecaptcha } from "../utils/human-events";
 
 export class BanxicoAutomation {
   private browser: Browser | null = null;
@@ -191,7 +191,7 @@ export class BanxicoAutomation {
 
     const download = await downloadPromise;
 
-    const finalDownloadPath = FileManager.getDownloadPath(this.cepId, "${this.cepId}.zip");
+    const finalDownloadPath = FileManager.getDownloadPath(this.cepId, `${this.cepId}.zip`);
     await download.saveAs(finalDownloadPath);
     console.log(`✅ Archivo descargado: ${finalDownloadPath}`);
 
@@ -205,7 +205,7 @@ export class BanxicoAutomation {
     pauseSeconds: number = 10,
     browserType: BrowserType = BrowserType.CHROMIUM,
     useHeadless: boolean = true
-  ): Promise<{ success: boolean; message: string; token?: string; downloadPath: string }> {
+  ): Promise<{ success: boolean; message: string; token?: string; download_path: string }> {
     const BrowserEngine = this.getBrowserEngine(browserType);
     const maxUploadRetries = 3;
     const maxQueryRetries = 3;
@@ -393,7 +393,7 @@ export class BanxicoAutomation {
         success: true,
         message: `Token: ${token}`,
         token,
-        downloadPath: finalDownloadPath,
+        download_path: finalDownloadPath,
       };
     } catch (error) {
       if (this.browser) await this.browser.close();
