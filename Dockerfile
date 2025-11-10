@@ -1,5 +1,7 @@
 FROM node:20-bookworm
 
+RUN npm install -g pnpm
+
 RUN pnpm exec playwright@1.56.1 install --with-deps
 
 WORKDIR /app
