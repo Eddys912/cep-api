@@ -9,6 +9,8 @@
 npm-debug.log*
 yarn-debug.log*
 error_no_descarga_*
+error_consulta_*
+error_no_token_*
 
 # 2. DEPENDENCIES AND PACKAGE MANAGERS
 node_modules/
