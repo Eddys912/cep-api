@@ -29,7 +29,7 @@ export class FileManager {
     return path.join(FileManager.SCREENSHOTS_DIR, `${cepId}_${name}.png`);
   }
 
-  public static fileExists(filepath: string): boolean {
+  public static existsFile(filepath: string): boolean {
     return fs.existsSync(filepath);
   }
 

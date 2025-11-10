@@ -1,8 +1,8 @@
 import { writeFile } from "fs/promises";
 import { ElectronicPayment } from "../types/cep.types";
-import { FileManager } from "./fileManager";
+import { FileManager } from "./file-manager";
 
-export async function generateTxtFile(payments: ElectronicPayment[], cepId: string): Promise<string> {
+export async function generateTxt(payments: ElectronicPayment[], cepId: string): Promise<string> {
   const filepath = FileManager.getOutputPath(cepId);
 
   const lines = payments.map((payment) => {
