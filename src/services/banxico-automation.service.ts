@@ -218,14 +218,9 @@ export class BanxicoAutomation {
       console.log(`🚀 Iniciando navegador ${browserType.toUpperCase()}...`);
 
       const universalArgs = [
-        "--disable-dev-shm-usage",
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-infobars",
         "--window-position=0,0",
         "--ignore-certificate-errors",
         "--ignore-certificate-errors-spki-list",
-        "--disable-features=IsolateOrigins,site-per-process",
         "--lang=es-MX,es",
       ];
 
@@ -236,6 +231,11 @@ export class BanxicoAutomation {
 
       if (browserType === BrowserType.CHROMIUM) {
         launchOptions.args.push(
+          "--disable-dev-shm-usage",
+          "--no-sandbox",
+          "--disable-setuid-sandbox",
+          "--disable-infobars",
+          "--disable-features=IsolateOrigins,site-per-process",
           "--disable-web-security",
           "--disable-blink-features=AutomationControlled",
           "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
