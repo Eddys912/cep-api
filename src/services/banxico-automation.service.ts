@@ -218,7 +218,6 @@ export class BanxicoAutomation {
       console.log(`🚀 Iniciando navegador ${browserType.toUpperCase()}...`);
 
       const universalArgs = [
-        "--window-position=0,0",
         "--ignore-certificate-errors",
         "--ignore-certificate-errors-spki-list",
         "--lang=es-MX,es",
@@ -231,6 +230,7 @@ export class BanxicoAutomation {
 
       if (browserType === BrowserType.CHROMIUM) {
         launchOptions.args.push(
+          "--window-position=0,0",
           "--disable-dev-shm-usage",
           "--no-sandbox",
           "--disable-setuid-sandbox",
