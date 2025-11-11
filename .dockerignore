@@ -42,7 +42,6 @@ out/
 # Docker
 docker-compose.yml
 .dockerignore
-Dockerfile
 
 # Temporal
 tmp/

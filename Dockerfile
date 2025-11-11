@@ -35,8 +35,11 @@ COPY . .
 # Compiler TypeScript to JavaScript
 RUN pnpm run build
 
-# Expone port
+# Expose port
 EXPOSE 3000
 
+# Disable Node.js stdout/stderr buffering for Docker logs
+ENV NODE_OPTIONS="--no-warnings --max_old_space_size=512"
+
 # Use the script to start the server
-CMD [ "pnpm", "start" ]
+CMD [ "node", "--unhandled-rejections=strict", "dist/index.js" ]

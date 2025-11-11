@@ -2,7 +2,8 @@ import fs from "fs";
 import path from "path";
 
 export class FileManager {
-  private static readonly ROOT_DIR = path.join(__dirname, "..", "..");
+  // Usar process.cwd() en lugar de __dirname para mayor compatibilidad
+  private static readonly ROOT_DIR = process.cwd();
 
   public static readonly OUTPUTS_DIR = path.join(FileManager.ROOT_DIR, "outputs");
   public static readonly DOWNLOADS_DIR = path.join(FileManager.ROOT_DIR, "downloads");
@@ -12,7 +13,14 @@ export class FileManager {
     const directories = [FileManager.OUTPUTS_DIR, FileManager.DOWNLOADS_DIR, FileManager.SCREENSHOTS_DIR];
 
     directories.forEach((dir) => {
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+          console.log(`📁 Directorio creado: ${dir}`);
+        }
+      } catch (error) {
+        console.error(`❌ Error al crear directorio ${dir}:`, error);
+      }
     });
   }
 

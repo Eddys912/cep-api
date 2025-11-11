@@ -6,6 +6,8 @@ import { FileManager } from "./utils/file-manager";
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
+console.log("🚀 Inicializando aplicación...");
+console.log(`📂 Directorio actual: ${process.cwd()}`);
 FileManager.initializeDirectories();
 
 app.use(express.json());
@@ -13,6 +15,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use("/api/v1", cepRoutes);
 
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
+  console.error("⚠️ Error capturado:", err);
   res.status(err.status || 500).json({ error: err.message || "Error interno del servidor" });
 });
 
