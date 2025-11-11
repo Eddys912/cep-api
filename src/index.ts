@@ -6,8 +6,6 @@ import { FileManager } from "./utils/file-manager";
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-console.log("🚀 Inicializando aplicación...");
-console.log(`📂 Directorio actual: ${process.cwd()}`);
 FileManager.initializeDirectories();
 
 app.use(express.json());

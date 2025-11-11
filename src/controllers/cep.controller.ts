@@ -96,20 +96,15 @@ export async function generateFromDateRange(req: Request, res: Response<CepRespo
     ceps.set(cepId, cep);
 
     const payload: CepRequest = { email, format, start_date, end_date };
-    // Ejecutar en background pero con mejor manejo de errores
-    cepFromDates(cepId, ceps, payload)
-      .then(() => {
-        console.log(`✅ CEP ${cepId} completado exitosamente`);
-      })
-      .catch((err) => {
-        console.error(`❌ Error procesando cep ${cepId}:`, err);
-        const cep = ceps.get(cepId);
-        if (cep) {
-          cep.status = CepTypeStatus.FAILED;
-          cep.error = err.message || "Error desconocido";
-          cep.completed_at = new Date().toISOString();
-        }
-      });
+    cepFromDates(cepId, ceps, payload).catch((err) => {
+      console.error(`❌ Error procesando cep ${cepId}:`, err);
+      const cep = ceps.get(cepId);
+      if (cep) {
+        cep.status = CepTypeStatus.FAILED;
+        cep.error = err.message || "Error desconocido";
+        cep.completed_at = new Date().toISOString();
+      }
+    });
 
     const response: CepResponse = {
       cep_id: cepId,
