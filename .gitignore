@@ -1,0 +1,129 @@
+# Generated & build artifacts
+/dist
+/build
+/out
+/temp
+/outputs
+/downloads
+/logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+error_no_descarga_*
+error_consulta_*
+error_no_token_*
+
+# TypeScript build info
+*.tsbuildinfo
+
+# Framework-specific builds
+.next/
+.nuxt/
+.svelte-kit/
+.gatsby/
+.cache/
+public/build/
+
+# Dependencies & package managers
+node_modules/
+.pnpm-store/
+.npm/
+.yarn/
+.yarn-cache/
+.yarn-unplugged/
+.yarn/build-state.yml
+.yarn/install-state.gz
+npm-shrinkwrap.json
+
+# Testing & coverge
+coverage/
+.nyc_output/
+.parcel-cache/
+.jest-cache/
+.vitest/
+__snapshots__/
+*.spec.js
+*.spec.ts
+*.test.js
+*.test.ts
+test-results/
+playwright-report/
+
+# Environment & configuration
+.env
+.env.*
+!.env.example
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Editor & IDE configuration
+*~
+.*.swp
+.*.swo
+*.sublime-*
+.zed/
+.idea/
+.vscode/
+nbproject/
+.project
+.classpath
+.settings/
+*.code-workspace
+
+# Operating system & temporary files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+desktop.ini
+$RECYCLE.BIN/
+*.bak
+.tmp
+*.tmp
+*.temp
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+._*
+.Spotlight-V100
+.Trashes
+
+# Playwright & browser testing
+playwright-report/
+test-results/
+blob_storage/
+service-worker/
+
+# Linters, formatters & code quality
+.eslintcache
+.stylelintcache
+.prettiercache
+*.css.map
+*.js.map
+*.min.js
+*.min.css
+
+# Sensitive files
+secrets/
+*.pem
+*.key
+*.crt
+id_rsa
+id_dsa
+*.pgp
+*.gpg
+*.secret
+config/production.json
+config/*secret*
+
+# Miscelaneous
+.history/
+.versions/
+.cache-loader/
+.tern-port
+.rollup.cache/
+.webpack/
+.parcel-cache/

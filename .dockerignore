@@ -1,0 +1,102 @@
+# DEPENDENCIES (installed in Docker)
+node_modules/
+npm-debug.log*
+pnpm-debug.log*
+yarn-debug.log*
+
+# Package manager lock files (except npm)
+pnpm-lock.yaml
+yarn.lock
+
+# VERSION CONTROL
+.git/
+.gitignore
+.gitattributes
+.gitmodules
+
+# Environment and configuration
+.env
+.env.*
+!.env.example
+.env.local
+
+# Logs & temporary files
+logs/
+*.log
+error_*
+temp/
+tmp/
+outputs/
+downloads/
+*.tmp
+*.temp
+
+# Testing & coverage
+coverage/
+.nyc_output/
+**/*.test.ts
+**/*.spec.ts
+**/*.test.js
+**/*.spec.js
+__tests__/
+__mocks__/
+jest.config.*
+vitest.config.*
+
+# Build artiifacts (generated in Docker)
+dist/
+build/
+out/
+*.tsbuildinfo
+.next/
+.nuxt/
+
+# OS & IDE files
+.DS_Store
+Thumbs.db
+desktop.ini
+*.swp
+*.swo
+*~
+
+# IDE directories
+.vscode/
+.idea/
+.zed/
+nbproject/
+.project
+.classpath
+.settings/
+
+# Playwright & browser cache
+.cache/
+playwright-report/
+test-results/
+blob_storage/
+service-worker/
+
+# Sensitive files (Security)
+secrets/
+*.pem
+*.key
+*.crt
+id_rsa
+id_dsa
+*.pgp
+*.gpg
+config/production.json
+config/*secret*
+
+# Dpcumentation
+*.md
+!README.md
+LICENSE
+CHANGELOG.md
+CONTRIBUTING.md
+
+# Linter & formatter configs
+.editorconfig
+.eslintignore
+.eslintrc*
+.prettierignore
+.prettierrc*
