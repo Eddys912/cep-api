@@ -6,8 +6,8 @@ WORKDIR /app
 COPY package.json package-lock.json* ./
 COPY tsconfig.json ./
 
-# Install dependencies with npm
-RUN npm ci --omit=dev
+# Install dependencies
+RUN npm ci
 
 # Install system dependencies for ALL Playwright browsers
 RUN apt-get update && apt-get install -y \
@@ -67,6 +67,11 @@ COPY . .
 
 # Build TypeScript
 RUN npm run build
+
+# Remove devDependencies and clean up
+RUN npm prune --production && \
+    npm cache clean --force && \
+    rm -rf /root/.npm
 
 # Expose port
 EXPOSE 3000
