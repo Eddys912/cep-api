@@ -1,3 +1,5 @@
+import fs from "fs";
+import { supabase } from "../config/database";
 import { CepStatus } from "../types/cep.types";
 import { BrowserType, CepTypeStatus, FormatType } from "../types/global.enums";
 import { BanxicoAutomation } from "./banxico-automation.service";
@@ -59,8 +61,53 @@ export async function runBanxicoAutomation(
     throw new Error(finalError);
   }
 
-  cep.token = automationResult.token;
-  cep.status = CepTypeStatus.COMPLETED;
-  cep.result = automationResult;
-  cep.banxico_result_path = automationResult.download_path;
+  console.log("📤 Subiendo archivo a Supabase Storage...");
+  try {
+    const fileBuffer = fs.readFileSync(automationResult.download_path);
+    const fileName = `${cepId}.zip`;
+
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from("cep-results")
+      .upload(fileName, fileBuffer, {
+        contentType: "application/zip",
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error("❌ Error subiendo a Supabase:", uploadError);
+      throw uploadError;
+    }
+
+    console.log("✅ Archivo subido a Supabase Storage");
+
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from("cep-results")
+      .createSignedUrl(fileName, 604800);
+
+    if (urlError) {
+      console.error("❌ Error generando URL firmada:", urlError);
+      throw urlError;
+    }
+    console.log("✅ URL firmada generada");
+    try {
+      fs.unlinkSync(automationResult.download_path);
+      console.log("🗑️ Archivo local eliminado");
+    } catch (cleanError) {
+      console.warn("⚠️ No se pudo eliminar archivo local:", cleanError);
+    }
+
+    cep.token = automationResult.token;
+    cep.status = CepTypeStatus.COMPLETED;
+    cep.result = {
+      ...automationResult,
+      download_path: urlData.signedUrl,
+    };
+    cep.banxico_result_path = urlData.signedUrl;
+  } catch (storageError) {
+    console.error("❌ Error con Supabase Storage:", storageError);
+    cep.token = automationResult.token;
+    cep.status = CepTypeStatus.COMPLETED;
+    cep.result = automationResult;
+    cep.banxico_result_path = automationResult.download_path;
+  }
 }

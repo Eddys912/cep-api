@@ -153,12 +153,23 @@ export async function downloadResult(req: Request, res: Response) {
       return res.status(400).json(errorResponse);
     }
 
-    if (!cep.banxico_result_path || !fs.existsSync(cep.banxico_result_path))
+    if (!cep.banxico_result_path) {
       return res.status(404).json({ error: "Archivo no encontrado" });
+    }
 
-    return res.download(cep.banxico_result_path, `${cepId}.zip`, (err) => {
-      if (err) if (!res.headersSent) res.status(500).json({ error: "Error descargando archivo" });
-    });
+    if (cep.banxico_result_path.startsWith("http")) {
+      return res.redirect(cep.banxico_result_path);
+    }
+
+    if (fs.existsSync(cep.banxico_result_path)) {
+      return res.download(cep.banxico_result_path, `${cepId}.zip`, (err) => {
+        if (err && !res.headersSent) {
+          res.status(500).json({ error: "Error descargando archivo" });
+        }
+      });
+    }
+
+    return res.status(404).json({ error: "Archivo no disponible" });
   } catch (error) {
     return res.status(500).json({
       error: error instanceof Error ? error.message : "Error desconocido",
