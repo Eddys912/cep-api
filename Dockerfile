@@ -18,8 +18,10 @@ RUN apt-get update && apt-get install -y \
 # Create non-root user
 RUN groupadd -r pptruser && useradd -r -g pptruser -G audio,video pptruser \
     && mkdir -p /home/pptruser/Downloads \
+    && mkdir -p /ms-playwright \
     && chown -R pptruser:pptruser /home/pptruser \
-    && chown -R pptruser:pptruser /app
+    && chown -R pptruser:pptruser /app \
+    && chown -R pptruser:pptruser /ms-playwright
 
 # Copy package files
 COPY --chown=pptruser:pptruser package.json package-lock.json* ./
