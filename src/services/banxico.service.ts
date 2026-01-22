@@ -1,113 +1,166 @@
 import fs from "fs";
-import { supabase } from "../config/database";
+import { getSupabaseClient } from "../config/database";
 import { CepStatus } from "../types/cep.types";
 import { BrowserType, CepTypeStatus, FormatType } from "../types/global.enums";
+import { FileManager } from "../utils/file-manager";
 import { BanxicoAutomation } from "./banxico-automation.service";
 
 const BROWSER_ORDER = [BrowserType.CHROMIUM, BrowserType.FIREFOX, BrowserType.WEBKIT];
+const IS_DEV = process.env.NODE_ENV !== "production";
 
-const isDev = process.env.NODE_ENV !== "production";
+interface AutomationServiceResult {
+  success: boolean;
+  token?: string;
+  downloadUrl?: string;
+  error?: string;
+}
 
+/**
+ * Sleeps for a given amount of milliseconds
+ * @param ms milliseconds to sleep
+ */
 async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function runBanxicoAutomation(
+/**
+ * Uploads a file to Supabase Storage and returns a signed URL
+ * @param {string} filePath - Path to the local file
+ * @param {string} cepId - CEP ID for naming the file
+ * @returns {Promise<string>} Signed URL of the uploaded file
+ */
+async function uploadToSupabase(filePath: string, cepId: string): Promise<string> {
+  try {
+    const supabase = getSupabaseClient();
+    const fileBuffer = fs.readFileSync(filePath);
+    const fileName = `${cepId}.zip`;
+
+    console.log(`[INFO] Subiendo archivo ${fileName} a Supabase...`);
+
+    const { error: uploadError } = await supabase.storage.from("cep-results").upload(fileName, fileBuffer, {
+      contentType: "application/zip",
+      upsert: true,
+    });
+
+    if (uploadError) {
+      throw new Error(`Upload failed: ${uploadError.message}`);
+    }
+
+    const { data: urlData, error: urlError } = await supabase.storage
+      .from("cep-results")
+      .createSignedUrl(fileName, 604800); // 7 days expiration
+
+    if (urlError) {
+      throw new Error(`Signed URL generation failed: ${urlError.message}`);
+    }
+
+    return urlData.signedUrl;
+  } catch (error) {
+    throw error;
+  }
+}
+
+/**
+ * Cleans up temporary files
+ * @param {string} filePath - Path to the file to delete
+ */
+function cleanupFile(filePath: string): void {
+  try {
+    if (fs.existsSync(filePath)) {
+      FileManager.deleteFile(filePath);
+      console.log(`[INFO] Archivo temporal eliminado: ${filePath}`);
+    }
+  } catch (error: any) {
+    console.warn(`[WARN] Falló limpieza de archivo ${filePath}: ${error.message}`);
+  }
+}
+
+/**
+ * Executes the Banxico automation logic with browser fallback
+ */
+async function executeAutomationWithFallback(
   cepId: string,
-  ceps: Map<string, CepStatus>,
   filepath: string,
   email: string,
-  format: FormatType = FormatType.BOTH
-): Promise<void> {
-  const cep = ceps.get(cepId);
-  if (!cep) throw new Error("CEP no encontrado");
-
-  let automationResult = null;
-  let lastError = null;
+  format: FormatType
+): Promise<{ token: string; downloadPath: string }> {
+  let lastError: unknown;
 
   for (let i = 0; i < BROWSER_ORDER.length; i++) {
-    const browserType = BROWSER_ORDER[i] as BrowserType;
+    const browserType = BROWSER_ORDER[i];
     const attempt = i + 1;
 
     try {
-      console.log(`🔄 Intento ${attempt}/${BROWSER_ORDER.length}: ${browserType.toUpperCase()}`);
+      console.log(`[INFO] Intento ${attempt}/${BROWSER_ORDER.length} con ${browserType.toUpperCase()}`);
+
       const pauseSeconds = i === 0 ? 10 : 20 + (i - 1) * 15;
       const automation = new BanxicoAutomation(cepId);
-      automationResult = await automation.automate(filepath, email, format, pauseSeconds, browserType, true);
-      break;
-    } catch (error: unknown) {
+
+      const result = await automation.automate(filepath, email, format, pauseSeconds, browserType, true);
+
+      return {
+        token: result.token!,
+        downloadPath: result.download_path,
+      };
+    } catch (error) {
       lastError = error;
       const errorMsg = error instanceof Error ? error.message : "Error desconocido";
-
-      if (isDev) {
-        console.error(`❌ Error en ${browserType}:`, errorMsg);
-      } else {
-        console.error(`❌ Error en intento ${attempt} con ${browserType}`);
-      }
+      console.error(`[ERROR] Fallo con ${browserType}: ${errorMsg}`);
 
       if (i < BROWSER_ORDER.length - 1) {
-        const delay = (i + 1) * 8000;
-        console.log(`⏳ Esperando ${delay / 1000}s antes de intentar con el siguiente navegador...`);
+        const delay = (i + 1) * 5000;
+        console.log(`[INFO] Esperando ${delay / 1000}s para siguiente intento...`);
         await sleep(delay);
       }
     }
   }
 
-  if (!automationResult) {
-    const finalError =
-      isDev && lastError instanceof Error
-        ? lastError.message
-        : "Falló la automatización con todos los navegadores disponibles";
-    throw new Error(finalError);
-  }
+  throw lastError instanceof Error ? lastError : new Error("Falló la automatización con todos los navegadores");
+}
 
-  console.log("📤 Subiendo archivo a Supabase Storage...");
+/**
+ * Runs the Banxico automation process managed by CEP service
+ */
+export async function runBanxicoAutomation(
+  cepId: string,
+  ceps: Map<string, CepStatus>,
+  inputFilePath: string,
+  email: string,
+  format: FormatType = FormatType.BOTH
+): Promise<void> {
+  const cep = ceps.get(cepId);
+  if (!cep) throw new Error(`CEP ${cepId} no encontrado en memoria`);
+
+  let tempDownloadPath: string | undefined;
+
   try {
-    const fileBuffer = fs.readFileSync(automationResult.download_path);
-    const fileName = `${cepId}.zip`;
+    // 1. Run Automation
+    const { token, downloadPath } = await executeAutomationWithFallback(cepId, inputFilePath, email, format);
+    tempDownloadPath = downloadPath;
 
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("cep-results")
-      .upload(fileName, fileBuffer, {
-        contentType: "application/zip",
-        upsert: true,
-      });
+    // 2. Upload to Supabase
+    const signedUrl = await uploadToSupabase(downloadPath, cepId);
+    console.log(`[SUCCESS] Archivo disponible en Supabase`);
 
-    if (uploadError) {
-      console.error("❌ Error subiendo a Supabase:", uploadError);
-      throw uploadError;
-    }
-
-    console.log("✅ Archivo subido a Supabase Storage");
-
-    const { data: urlData, error: urlError } = await supabase.storage
-      .from("cep-results")
-      .createSignedUrl(fileName, 604800);
-
-    if (urlError) {
-      console.error("❌ Error generando URL firmada:", urlError);
-      throw urlError;
-    }
-    console.log("✅ URL firmada generada");
-    try {
-      fs.unlinkSync(automationResult.download_path);
-      console.log("🗑️ Archivo local eliminado");
-    } catch (cleanError) {
-      console.warn("⚠️ No se pudo eliminar archivo local:", cleanError);
-    }
-
-    cep.token = automationResult.token;
+    // 3. Update Status
+    cep.token = token;
     cep.status = CepTypeStatus.COMPLETED;
-    cep.result = {
-      ...automationResult,
-      download_path: urlData.signedUrl,
-    };
-    cep.banxico_result_path = urlData.signedUrl;
-  } catch (storageError) {
-    console.error("❌ Error con Supabase Storage:", storageError);
-    cep.token = automationResult.token;
-    cep.status = CepTypeStatus.COMPLETED;
-    cep.result = automationResult;
-    cep.banxico_result_path = automationResult.download_path;
+    cep.banxico_result_path = signedUrl;
+    cep.completed_at = new Date().toISOString();
+  } catch (error: any) {
+    console.error(`[ERROR] Proceso Banxico fallido para ${cepId}:`, error.message);
+
+    cep.status = CepTypeStatus.FAILED;
+    cep.error = error.message;
+    cep.completed_at = new Date().toISOString();
+
+    // If we have a local file but upload failed, we might want to keep the local path as fallback?
+    // Requirement says "nothing local", but for debugging/fallback maybe?
+    // Adhering to strict requirement: if upload fails, it fails.
+  } finally {
+    // 4. Cleanup
+    if (tempDownloadPath) cleanupFile(tempDownloadPath);
+    // Note: inputFilePath is managed by cep.service / txt-generator, potentially should be cleaned too?
+    // Leaving inputFilePath cleanup to caller or separate cleanup routine if intended.
   }
 }
