@@ -54,6 +54,16 @@ export class FileManager {
   }
 
   /**
+   * Gets a temporary path for downloading files before upload
+   * @param {string} filename - Filename
+   * @returns {string} Temporary file path
+   */
+  public static getTempDownloadPath(filename: string): string {
+    const tempDir = process.env.NODE_ENV === "production" ? "/tmp" : FileManager.ROOT_DIR;
+    return path.join(tempDir, filename);
+  }
+
+  /**
    * Checks if a file exists
    * @param {string} filepath - Path to the file
    * @returns {boolean} True if file exists, false otherwise
