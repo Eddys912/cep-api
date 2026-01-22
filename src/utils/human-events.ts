@@ -1,17 +1,31 @@
 import { Page } from "playwright";
 
-export async function moveMouseHuman(page: Page, x: number, y: number, clickOffset: boolean = true) {
-  let finalX = x;
-  let finalY = y;
+interface MouseMovementConfig {
+  steps?: number;
+  minDelay?: number;
+  maxDelay?: number;
+  offsetX?: number;
+  offsetY?: number;
+}
 
-  if (clickOffset) {
-    const offsetRangeX = 5;
-    const offsetRangeY = 3;
-    finalX += (Math.random() - 0.5) * offsetRangeX * 2;
-    finalY += (Math.random() - 0.5) * offsetRangeY * 2;
-  }
+/**
+ * Moves the mouse cursor in a human-like manner to the specified coordinates
+ * @param {Page} page - Playwright page instance
+ * @param {number} x - Target X coordinate
+ * @param {number} y - Target Y coordinate
+ * @param {MouseMovementConfig} config - Configuration options
+ */
+export async function moveMouseHuman(
+  page: Page,
+  x: number,
+  y: number,
+  config: MouseMovementConfig = {}
+): Promise<void> {
+  const { steps = Math.floor(Math.random() * 10) + 15, minDelay = 5, maxDelay = 20, offsetX = 5, offsetY = 3 } = config;
 
-  const steps = Math.floor(Math.random() * 10) + 15;
+  const finalX = x + (Math.random() - 0.5) * offsetX * 2;
+  const finalY = y + (Math.random() - 0.5) * offsetY * 2;
+
   const currentX = Math.random() * 200;
   const currentY = Math.random() * 200;
 
@@ -21,22 +35,53 @@ export async function moveMouseHuman(page: Page, x: number, y: number, clickOffs
     const nx = currentX + (finalX - currentX) * easeProgress;
     const ny = currentY + (finalY - currentY) * easeProgress;
     await page.mouse.move(nx, ny);
-    await page.waitForTimeout(Math.random() * 15 + 5);
+    await page.waitForTimeout(Math.random() * (maxDelay - minDelay) + minDelay);
   }
 }
 
-export async function scrollHuman(page: Page) {
-  const scrollAmount = Math.floor(Math.random() * 250) + 100;
+/**
+ * Configuration for human-like scrolling
+ */
+interface ScrollConfig {
+  minAmount?: number;
+  maxAmount?: number;
+  minDelay?: number;
+  maxDelay?: number;
+}
+
+/**
+ * Scrolls the page in a human-like manner
+ * @param {Page} page - Playwright page instance
+ * @param {ScrollConfig} config - Configuration options
+ */
+export async function scrollHuman(page: Page, config: ScrollConfig = {}): Promise<void> {
+  const { minAmount = 100, maxAmount = 350, minDelay = 300, maxDelay = 800 } = config;
+
+  const scrollAmount = Math.floor(Math.random() * (maxAmount - minAmount)) + minAmount;
   await page.evaluate((amount) => {
     window.scrollBy({
       top: amount,
       behavior: "smooth",
     });
   }, scrollAmount);
-  await page.waitForTimeout(Math.random() * 500 + 300);
+  await page.waitForTimeout(Math.random() * (maxDelay - minDelay) + minDelay);
 }
 
-export async function waitForRecaptcha(page: Page, timeout: number = 15000): Promise<boolean> {
+/**
+ * Result of reCAPTCHA wait operation
+ */
+export interface RecaptchaResult {
+  success: boolean;
+  timedOut: boolean;
+}
+
+/**
+ * Waits for reCAPTCHA to be solved
+ * @param {Page} page - Playwright page instance
+ * @param {number} timeout - Maximum time to wait in milliseconds
+ * @returns {Promise<RecaptchaResult>} Result indicating if reCAPTCHA was solved
+ */
+export async function waitForRecaptcha(page: Page, timeout: number = 15000): Promise<RecaptchaResult> {
   try {
     await page.waitForFunction(
       () => {
@@ -45,25 +90,55 @@ export async function waitForRecaptcha(page: Page, timeout: number = 15000): Pro
       },
       { timeout }
     );
-    return true;
+    return { success: true, timedOut: false };
   } catch (error) {
-    return false;
+    return { success: false, timedOut: true };
   }
 }
 
-export async function simulateHumanActivity(page: Page) {
-  for (let i = 0; i < 2; i++) {
-    const x = Math.random() * 600 + 100;
-    const y = Math.random() * 300 + 100;
+/**
+ * Configuration for simulating human activity
+ */
+interface HumanActivityConfig {
+  movements?: number;
+  minX?: number;
+  maxX?: number;
+  minY?: number;
+  maxY?: number;
+  minDelay?: number;
+  maxDelay?: number;
+  scrollAmount?: number;
+}
+
+/**
+ * Simulates random human-like activity on the page (mouse movements and scrolling)
+ * @param {Page} page - Playwright page instance
+ * @param {HumanActivityConfig} config - Configuration options
+ */
+export async function simulateHumanActivity(page: Page, config: HumanActivityConfig = {}): Promise<void> {
+  const {
+    movements = 2,
+    minX = 100,
+    maxX = 700,
+    minY = 100,
+    maxY = 400,
+    minDelay = 300,
+    maxDelay = 800,
+    scrollAmount = 200,
+  } = config;
+
+  for (let i = 0; i < movements; i++) {
+    const x = Math.random() * (maxX - minX) + minX;
+    const y = Math.random() * (maxY - minY) + minY;
     await page.mouse.move(x, y);
-    await page.waitForTimeout(Math.random() * 500 + 300);
+    await page.waitForTimeout(Math.random() * (maxDelay - minDelay) + minDelay);
   }
 
-  await page.evaluate(() => {
+  await page.evaluate((amount) => {
     window.scrollTo({
-      top: Math.random() * 200,
+      top: Math.random() * amount,
       behavior: "smooth",
     });
-  });
-  await page.waitForTimeout(Math.random() * 800 + 500);
+  }, scrollAmount);
+  await page.waitForTimeout(Math.random() * (maxDelay - minDelay) + minDelay);
 }
