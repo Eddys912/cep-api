@@ -123,37 +123,106 @@ export class BanxicoAutomation {
     // Fill email
     const emailInput = page.locator('input[type="email"][name="correo"]');
     await emailInput.click();
+    await page.waitForTimeout(300);
     await emailInput.fill(email);
 
     // Select format
     const formatMap = { pdf: "1", xml: "2", ambos: "3" };
     await page.selectOption('select[name="formato"]', formatMap[format]);
-    await page.waitForTimeout(500);
 
-    // Handle button interaction
-    const submitBtn = page.locator('input[type="button"][value="Cargar archivo"]');
+    // Handle button interaction with enhanced human behavior
+    const submitBtn = page.locator('input[type="button"][value="Cargar archivo"]#btn_grupo-footer');
+
+    // Verify button exists and is visible
+    await submitBtn.waitFor({ state: "visible", timeout: 10000 });
+
+    // Get button position
     const box = await submitBtn.boundingBox();
-    if (box) {
-      await moveMouseHuman(page, box.x + box.width / 2, box.y + box.height / 2, { steps: 5 });
+    if (!box) {
+      throw new Error("No se pudo obtener la posición del botón");
     }
 
-    await waitForRecaptcha(page, 10000);
-    await submitBtn.click();
+    // Move mouse to button area in human-like manner
+    await moveMouseHuman(page, box.x + box.width / 2, box.y + box.height / 2, { steps: 20 });
+    await page.waitForTimeout(500);
 
-    await page.waitForLoadState("networkidle", { timeout: 60000 });
+    // Scroll button into view if needed
+    await submitBtn.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
 
+    try {
+      await submitBtn.click({ timeout: 5000 });
+    } catch (error) {
+      console.warn("[WARN] Clic directo falló, intentando con force...");
+      await submitBtn.click({ force: true, timeout: 5000 });
+    }
+
+    try {
+      // Wait for either upload page or error
+      await Promise.race([
+        page.waitForURL("**/upload*", { timeout: 30000 }),
+        page.waitForFunction(
+          () => {
+            const body = document.body.innerText;
+            return body.includes("Token:") || body.includes("Ha ocurrido un error");
+          },
+          { timeout: 30000 }
+        ),
+      ]);
+    } catch (error) {
+      console.warn("[WARN] Timeout esperando navegación, verificando contenido actual...");
+    }
+
+    // Additional wait for page to stabilize
+    await page.waitForTimeout(2000);
+
+    // Extract token from page
     const content = await page.content();
-    const tokenMatch = content.match(/Token:\s*<strong>\s*([A-Za-z0-9]+)\s*<\/strong>/i);
+    console.log(`[DEBUG] URL actual: ${page.url()}`);
 
-    if (tokenMatch) {
-      return tokenMatch[1];
+    // Multiple token extraction patterns for robustness
+    const tokenPatterns = [
+      /Token:\s*<strong>\s*([A-Z0-9]+)\s*<\/strong>/i,
+      /Token:\s*<strong>([A-Z0-9]+)<\/strong>/i,
+      /<strong>\s*([A-Z0-9]{10})\s*<\/strong>/i,
+    ];
+
+    let tokenMatch = null;
+    for (const pattern of tokenPatterns) {
+      tokenMatch = content.match(pattern);
+      if (tokenMatch) {
+        console.log(`[INFO] Token encontrado con patrón: ${pattern}`);
+        break;
+      }
+    }
+
+    if (tokenMatch && tokenMatch[1]) {
+      const token = tokenMatch[1].trim();
+      console.log(`[SUCCESS] Token extraído: ${token}`);
+      return token;
     }
 
     if (content.includes("Ha ocurrido un error al procesar su solicitud")) {
       throw new Error("ERROR_BANXICO_GENERICO");
     }
 
-    throw new Error("Token no encontrado después del envío");
+    // Check if still on form page (click didn't work)
+    const isFormPage = (await page.locator('input[type="file"]').count()) > 0;
+    if (isFormPage) {
+      // Take screenshot for debugging
+      if (isDev) {
+        await page.screenshot({ path: `debug_form_fail_${this.cepId}.png`, fullPage: true });
+      }
+      throw new Error("El formulario no se envió correctamente - aún en página de carga");
+    }
+
+    // Save page content for debugging
+    if (isDev) {
+      const fs = require("fs");
+      fs.writeFileSync(`debug_no_token_${this.cepId}.html`, content);
+    }
+
+    throw new Error("Token no encontrado después del envío del formulario");
   }
 
   /**
@@ -171,31 +240,58 @@ export class BanxicoAutomation {
     await page.waitForLoadState("domcontentloaded");
     await simulateHumanActivity(page);
 
-    // Fill form
-    await page.locator('input[type="email"][name="correo"]').fill(email);
-    await page.locator('input[type="text"][name="token"]').fill(token);
+    // Fill email
+    const emailField = page.locator('input[type="email"][name="correo"]');
+    await emailField.waitFor({ state: "visible", timeout: 10000 });
+    await emailField.click();
+    await page.waitForTimeout(300);
+    await emailField.fill(email);
+    await page.waitForTimeout(500);
 
+    // Fill token
+    const tokenField = page.locator('input[type="text"][name="token"]');
+    await tokenField.click();
+    await page.waitForTimeout(300);
+    await tokenField.fill(token);
+    await page.waitForTimeout(500);
+
+    // Wait for reCAPTCHA
     console.log(`[INFO] Esperando resolución de CAPTCHA (${pauseSeconds}s)...`);
     await page.waitForTimeout(pauseSeconds * 1000);
     await waitForRecaptcha(page, 5000);
 
     // Submit query
-    await page.locator('input[type="button"][value="Consultar resultado"]').click();
+    const consultarBtn = page.locator('input[type="button"][value="Consultar resultado"]');
+    await consultarBtn.scrollIntoViewIfNeeded();
+    await page.waitForTimeout(500);
+
+    console.log("[INFO] Consultando resultado...");
+    await consultarBtn.click();
+
     await page.waitForLoadState("networkidle", { timeout: 60000 });
+    await page.waitForTimeout(2000);
 
     const htmlAfterQuery = await page.content();
     if (htmlAfterQuery.includes("Ha ocurrido un error") || (await page.title()).includes("ERROR")) {
-      throw new Error("ERROR_BANXICO_CONSULTA");
+      throw new Error("ERROR_BANXICO_CONSULTA: Error al consultar el token");
     }
 
     // Wait for download button
+    console.log("[INFO] Esperando botón de descarga...");
     try {
-      await page.waitForSelector('input[type="button"][value="Descargar"]', { timeout: 15000 });
+      await page.waitForSelector('input[type="button"][value="Descargar"]', {
+        state: "visible",
+        timeout: 20000,
+      });
     } catch {
-      throw new Error("Botón de descarga no encontrado");
+      if (isDev) {
+        await page.screenshot({ path: `debug_no_download_btn_${this.cepId}.png`, fullPage: true });
+      }
+      throw new Error("Botón de descarga no encontrado - verificar estado del proceso");
     }
 
-    console.log(`[INFO] Iniciando descarga...`);
+    // Start download
+    console.log(`[INFO] Iniciando descarga del archivo...`);
     const downloadPromise = page.waitForEvent("download", { timeout: 60000 });
     await page.click('input[type="button"][value="Descargar"]');
 
@@ -207,7 +303,7 @@ export class BanxicoAutomation {
   }
 
   /**
-   * Executs the full automation flow
+   * Executes the full automation flow
    */
   public async automate(
     filepath: string,
@@ -243,6 +339,7 @@ export class BanxicoAutomation {
       const maxRetries = 3;
       for (let i = 1; i <= maxRetries; i++) {
         try {
+          console.log(`[INFO] Intento ${i}/${maxRetries} de carga de archivo...`);
           token = await this.uploadFileAndGetToken(page, filepath, email, format);
           console.log(`[SUCCESS] Token obtenido: ${token}`);
           break;
@@ -256,12 +353,20 @@ export class BanxicoAutomation {
 
       if (!token) throw new Error("No se pudo obtener el token");
 
-      // Phase 2: Query & Download
-      await page.click('input[type="button"][value="Regresar"]');
-      await page.waitForTimeout(1000);
+      // Phase 2: Return to main page
+      console.log("[INFO] Regresando a página principal...");
+      try {
+        await page.click('input[type="button"][value="Regresar"]');
+        await page.waitForTimeout(2000);
+      } catch {
+        await page.goto("https://www.banxico.org.mx/cep-scl/");
+        await page.waitForTimeout(2000);
+      }
 
+      // Phase 3: Query and download
       for (let i = 1; i <= maxRetries; i++) {
         try {
+          console.log(`[INFO] Intento ${i}/${maxRetries} de descarga...`);
           finalDownloadPath = await this.attemptQueryAndDownload(page, email, token, pauseSeconds);
           console.log(`[SUCCESS] Archivo descargado en: ${finalDownloadPath}`);
           break;
