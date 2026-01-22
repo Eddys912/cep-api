@@ -1,5 +1,8 @@
 import { CepTypeStatus, FormatType } from "./global.enums";
 
+/**
+ * Electronic payment record from Supabase
+ */
 export interface ElectronicPayment {
   fecha_pago: string;
   clave_rastreo: string;
@@ -9,13 +12,19 @@ export interface ElectronicPayment {
   monto: string;
 }
 
+/**
+ * Request payload for CEP generation
+ */
 export interface CepRequest {
   email: string;
+  format: FormatType;
   start_date?: string;
   end_date?: string;
-  format?: FormatType;
 }
 
+/**
+ * Internal status tracking for CEP jobs
+ */
 export interface CepStatus {
   cep_id: string;
   status: CepTypeStatus;
@@ -29,21 +38,21 @@ export interface CepStatus {
   input_file_path?: string;
   banxico_result_path?: string;
   token?: string;
-  result?: {
-    success: boolean;
-    message: string;
-    token?: string;
-    download_path: string;
-  };
   error?: string;
 }
 
+/**
+ * Response for CEP generation request
+ */
 export interface CepResponse {
   cep_id: string;
   message: string;
   status: CepTypeStatus;
 }
 
+/**
+ * Response for CEP status query
+ */
 export interface CepStatusResponse {
   cep_id: string;
   status: CepTypeStatus;
@@ -55,11 +64,17 @@ export interface CepStatusResponse {
   download_available: boolean;
 }
 
+/**
+ * Response for listing all CEPs
+ */
 export interface CepListResponse {
   total: number;
   ceps: CepSummary[];
 }
 
+/**
+ * Summary information for a CEP job
+ */
 export interface CepSummary {
   cep_id: string;
   status: CepTypeStatus;
@@ -69,7 +84,11 @@ export interface CepSummary {
   records_processed?: number;
 }
 
+/**
+ * Error response format
+ */
 export interface CepErrorResponse {
   error: string;
+  code?: string;
   status?: CepTypeStatus;
 }
