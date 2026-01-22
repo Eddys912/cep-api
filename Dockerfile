@@ -12,7 +12,7 @@ WORKDIR /app
 RUN apt-get update && apt-get install -y \
     wget \
     gnupg \
-    && npx playwright install-deps \
+    && npx playwright install-deps chromium firefox webkit \
     && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user
@@ -32,8 +32,8 @@ USER pptruser
 RUN npm ci
 
 # Install Playwright browsers (as user)
-# We specificy the browsers we need
-RUN npx playwright install chromium firefox webkit --with-deps
+# We specificy the browsers we need - NO --with-deps here as we don't have root
+RUN npx playwright install chromium firefox webkit
 
 # Copy source code
 COPY --chown=pptruser:pptruser src ./src
