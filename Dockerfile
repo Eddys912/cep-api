@@ -31,7 +31,7 @@ COPY --chown=pptruser:pptruser tsconfig.json ./
 USER pptruser
 
 # Install dependencies
-RUN npm ci
+RUN npm ci --include=dev
 
 # Install Playwright browsers (as user)
 # We specificy the browsers we need - NO --with-deps here as we don't have root
