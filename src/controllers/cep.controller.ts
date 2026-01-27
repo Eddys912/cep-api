@@ -139,7 +139,7 @@ export async function generateFromDateRange(req: Request, res: Response<CepRespo
 export async function getCepStatus(req: Request, res: Response<CepStatusResponse | CepErrorResponse>) {
   try {
     const { cepId } = req.params;
-    const cep = ceps.get(cepId);
+    const cep = ceps.get(cepId as string);
 
     if (!cep) {
       return res.status(404).json({ error: "Trabajo no encontrado" });
@@ -171,7 +171,7 @@ export async function getCepStatus(req: Request, res: Response<CepStatusResponse
 export async function downloadResult(req: Request, res: Response) {
   try {
     const { cepId } = req.params;
-    const cep = ceps.get(cepId);
+    const cep = ceps.get(cepId as string);
 
     if (!cep) {
       return res.status(404).json({ error: "Trabajo no encontrado" });
