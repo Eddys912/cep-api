@@ -6,7 +6,7 @@ function startServer() {
   validateEnv();
 
   const server = app.listen(env.port, '0.0.0.0', () => {
-    console.log(`Servidor escuchando en http://localhost:${env.port}`);
+    console.log(`Servidor escuchando en el puerto ${env.port}`);
 
   });
 
