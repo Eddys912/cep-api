@@ -23,7 +23,7 @@ jobs:
             cd ~/server-stp
             git fetch origin
             git reset --hard origin/main
-            npm intall --omit=dev
+            npm install --omit=dev
             pm2 restart server-stp
             pm2 save
 
