@@ -24,7 +24,8 @@ async function processClaroPayment(payload) {
     );
   }
 
-  // Después de insertar, se ejecuta el RPC usando el stp_id del pago recibido.
+  //Después de insertar, se ejecuta el RPC usando el stp_id del pago recibido.
+
   const { error: rpcError } = await claro.rpc('pago_stp_a_cxc', {
     p_stp_id: paymentRecord.stp_id,
   });
