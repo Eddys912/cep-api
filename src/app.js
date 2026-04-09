@@ -39,6 +39,8 @@ app.use((error, req, res, next) => {
     console.error('Detalles del error:', JSON.stringify(error.details, null, 2));
   }
 
+console.log('Tiempo total de procesamiento (ms):', Date.now() - startTime);
+
   res.status(error.statusCode || 500).json({
     success: false,
     message: error.messageStp || 'devolver',
