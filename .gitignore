@@ -1,0 +1,26 @@
+# Archivos del sistema de Mac (¡Muy importante en tu caso!)
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Archivos de entorno y secretos (¡Nunca subas tus contraseñas!)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Node.js (Si usas JavaScript/React/Angular/etc)
+node_modules/
+npm-debug.log
+yarn-error.log
+package-lock.json
+
+# Logs y bases de datos locales
+*.log
+*.sqlite
+*.sqlite3
+
+# Carpetas de editores de código (VS Code, IntelliJ, etc)
+.vscode/
+.idea/
