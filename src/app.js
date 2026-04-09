@@ -39,7 +39,6 @@ app.use((error, req, res, next) => {
     console.error('Detalles del error:', JSON.stringify(error.details, null, 2));
   }
 
-
   res.status(error.statusCode || 500).json({
     success: false,
     message: error.messageStp || 'devolver',
