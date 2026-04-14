@@ -53,6 +53,8 @@ async function processPaymentSozu(req, res, next) {
       environment: result.environment,
     });
   } catch (error) {
+    console.error('🔴 Error en processPaymentSozu:', error.message);
+
     error.processingTimeMs = Date.now() - startTime;
     return next(error);
   }

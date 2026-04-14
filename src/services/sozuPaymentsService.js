@@ -90,11 +90,11 @@ async function insertarPagoSTP(sozu, payload) {
           timeout: 10000,
         }
       );
-      console.log('📧 Rechazo enviado a n8n');
     } catch (error) {
       console.error('⚠️ Error enviando rechazo a n8n:', error.message);
     }
 
+    console.log('📧 Rechazo enviado a n8n');
     console.log('Pago rechazado:', data.message, ' Clave rastreo: ', data.claverastreo);
     throw new Error(data.message || 'Pago rechazado por la función insertar_pago_stp');
   }

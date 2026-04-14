@@ -33,10 +33,20 @@ app.use((req, res) => {
 
 // Este handler responde errores globales.
 app.use((error, req, res, next) => {
-  console.error('Error al procesar la solicitud:', error.message);
+  console.log('Error al procesar la solicitud:', error.message);
+  console.log('🔴 json response',
+    json({
+      success: false,
+      message: error.messageStp || 'devolver',
+      internal_message: error.messageInter || 'Ocurrió un error al procesar la solicitud.',
+      details: error.details || null,
+      processingTime: Date.now() - startTime,
+      camposFaltantes: error.details || null,
+    })
+  );
 
   if (error.details) {
-    console.error('Detalles del error:', JSON.stringify(error.details, null, 2));
+    console.log('Detalles del error:', JSON.stringify(error.details, null, 2));
   }
 
   res.status(error.statusCode || 500).json({
