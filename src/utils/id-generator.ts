@@ -1,12 +1,18 @@
 /**
- * Generates a unique identifier in the format: YYYYMMDD-HHMM-XXX
- * Where XXX is a random 3-character alphanumeric string
+ * Generates a unique identifier in the format: YYYYMMDD-HHMMSS-XXX
+ * Where YYYYMMDD can be provided, HHMMSS is the current time, and XXX is random.
+ * @param {string} [dateStr] - Optional date in YYYY-MM-DD format to use as prefix
  * @returns {string} Unique identifier
  */
-export function generateId(): string {
+export function generateId(dateStr?: string): string {
   const now = new Date();
-  const date = now.toISOString().slice(0, 10).replace(/-/g, "");
-  const time = now.toTimeString().slice(0, 5).replace(":", "");
+  
+  // Use provided date (removing dashes) or current date
+  const date = dateStr ? dateStr.replace(/-/g, "") : now.toISOString().slice(0, 10).replace(/-/g, "");
+  
+  // Use time with hours, minutes, seconds: HHMMSS
+  const time = now.toTimeString().split(' ')[0].replace(/:/g, "");
+  
   const random = Math.random().toString(36).substring(2, 5).toUpperCase();
   return `${date}-${time}-${random}`;
 }
