@@ -23,6 +23,34 @@ app.get('/health', (req, res) => {
 // Esta ruta agrupa los endpoints del webhook.
 app.use('/webhook', webhookRoutes);
 
+// --- ADAPTACIÓN TS ---
+// Integrar rutas de la API de CEP escritas en TypeScript.
+try {
+  const fs = require('fs');
+  const path = require('path');
+  
+  let cepRoutes;
+  const isTsNode = process[Symbol.for("ts-node.register.instance")] || process.env.TS_NODE_DEV;
+  const distPath = path.join(__dirname, '../dist/routes/cep.routes.js');
+
+  if (isTsNode) {
+    // Entorno de desarrollo con ts-node
+    cepRoutes = require('./routes/cep.routes');
+  } else if (fs.existsSync(distPath)) {
+    // Entorno de producción: usar la versión compilada
+    cepRoutes = require('../dist/routes/cep.routes');
+  } else {
+    // Fallback
+    cepRoutes = require('./routes/cep.routes');
+  }
+
+  app.use('/api/v1', cepRoutes.default || cepRoutes);
+  console.log('[INFO] Rutas de CEP integradas correctamente.');
+} catch (error) {
+  console.warn('[WARN] Advertencia: Rutas de CEP no cargadas.', error.message);
+}
+// ---------------------
+
 // Este handler responde rutas no encontradas.
 app.use((req, res) => {
   res.status(404).json({
