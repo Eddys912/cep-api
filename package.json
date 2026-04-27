@@ -2,11 +2,12 @@
   "name": "cep-api",
   "version": "1.0.0",
   "description": "API para consultar CEP de Banxico",
-  "main": "dist/index.js",
+  "main": "index.js",
   "scripts": {
-    "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
+    "start": "node index.js",
+    "dev": "ts-node-dev --respawn --transpile-only index.js",
     "build": "tsc",
-    "start": "node dist/index.js"
+    "test": "echo \"No tests configured\""
   },
   "keywords": [],
   "author": "",
@@ -16,13 +17,17 @@
     "node": ">=18.0.0"
   },
   "dependencies": {
-    "dotenv": "17.2.3",
-    "express": "5.1.0",
+    "@supabase/supabase-js": "^2.101.1",
+    "axios": "^1.14.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.1",
+    "express": "^5.2.1",
     "playwright": "1.40.0"
   },
   "devDependencies": {
     "@types/express": "5.0.5",
     "@types/node": "24.9.2",
+    "prettier": "^3.8.1",
     "ts-node-dev": "2.0.0",
     "typescript": "5.9.3"
   }

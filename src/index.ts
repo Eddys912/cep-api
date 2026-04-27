@@ -76,6 +76,8 @@ function startServer() {
   process.on("SIGINT", shutdown);
 }
 
-startServer();
+// Ya no iniciamos el servidor aquí para no tener conflictos con el index.js principal.
+// El entry point de la aplicación vuelve a ser /index.js.
+// El js (index.js -> src/app.js) dirigirá e incluirá las rutas exportadas en src/routes/cep.routes.ts.
 
 export default configureApp;
