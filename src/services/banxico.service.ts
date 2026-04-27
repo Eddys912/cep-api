@@ -1,5 +1,4 @@
 import fs from "fs";
-import { getSupabaseClient } from "../config/database";
 import { CepStatus } from "../types/cep.types";
 import { BrowserType, CepTypeStatus, FormatType } from "../types/global.enums";
 import { FileManager } from "../utils/file-manager";
@@ -23,39 +22,34 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+
+
 /**
- * Uploads a file to Supabase Storage and returns a signed URL
+ * Uploads the ZIP file to the n8n production webhook
  * @param {string} filePath - Path to the local file
  * @param {string} cepId - CEP ID for naming the file
- * @returns {Promise<string>} Signed URL of the uploaded file
  */
-async function uploadToSupabase(filePath: string, cepId: string): Promise<string> {
+async function uploadToN8n(filePath: string, cepId: string): Promise<void> {
   try {
-    const supabase = getSupabaseClient();
+    console.log(`[INFO] Subiendo archivo ${cepId}.zip a webhook de n8n...`);
     const fileBuffer = fs.readFileSync(filePath);
-    const fileName = `${cepId}.zip`;
+    
+    const formData = new FormData();
+    const blob = new Blob([fileBuffer], { type: "application/zip" });
+    formData.append("file", blob, `${cepId}.zip`);
 
-    console.log(`[INFO] Subiendo archivo ${fileName} a Supabase...`);
-
-    const { error: uploadError } = await supabase.storage.from("cep-results").upload(fileName, fileBuffer, {
-      contentType: "application/zip",
-      upsert: true,
+    const response = await fetch("https://automatizacion-n8n.fbqqbe.easypanel.host/webhook/cargarArchivoCep", {
+      method: "POST",
+      body: formData as any,
     });
 
-    if (uploadError) {
-      throw new Error(`Upload failed: ${uploadError.message}`);
+    if (!response.ok) {
+      throw new Error(`Error en n8n webhook: ${response.status} ${response.statusText}`);
     }
 
-    const { data: urlData, error: urlError } = await supabase.storage
-      .from("cep-results")
-      .createSignedUrl(fileName, 604800); // 7 days expiration
-
-    if (urlError) {
-      throw new Error(`Signed URL generation failed: ${urlError.message}`);
-    }
-
-    return urlData.signedUrl;
+    console.log(`[SUCCESS] Archivo enviado a n8n con éxito`);
   } catch (error) {
+    console.error(`[ERROR] Fallo al enviar archivo a n8n:`, error);
     throw error;
   }
 }
@@ -138,14 +132,13 @@ export async function runBanxicoAutomation(
     const { token, downloadPath } = await executeAutomationWithFallback(cepId, inputFilePath, email, format);
     tempDownloadPath = downloadPath;
 
-    // 2. Upload to Supabase
-    const signedUrl = await uploadToSupabase(downloadPath, cepId);
-    console.log(`[SUCCESS] Archivo disponible en Supabase`);
+    // 2. Upload to n8n Webhook
+    await uploadToN8n(downloadPath, cepId);
 
     // 3. Update Status
     cep.token = token;
     cep.status = CepTypeStatus.COMPLETED;
-    cep.banxico_result_path = signedUrl;
+    cep.banxico_result_path = "Enviado a n8n"; // Using string since download_available depends on it being truthy
     cep.completed_at = new Date().toISOString();
   } catch (error: any) {
     console.error(`[ERROR] Proceso Banxico fallido para ${cepId}:`, error.message);

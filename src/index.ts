@@ -1,27 +1,12 @@
 import "dotenv/config";
 import express, { Express, NextFunction, Request, Response } from "express";
-import { initializeDatabase } from "./config/database";
 import cepRoutes from "./routes/cep.routes";
-import { DatabaseErrorCode } from "./types/global.enums";
 import { FileManager } from "./utils/file-manager";
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const IS_DEV = process.env.NODE_ENV !== "production";
 
 function initializeDependencies(): void {
-  const dbResult = initializeDatabase();
-  if (!dbResult.success) {
-    console.error(`[FATAL] Error de conexión a Base de Datos:`);
-    console.error(`Status: ${dbResult.error?.code}`);
-    console.error(`Mensaje: ${dbResult.error?.message}`);
-
-    if (dbResult.error?.code === DatabaseErrorCode.MISSING_CREDENTIALS && dbResult.error?.missingVars) {
-      console.error(`[FATAL] Variables faltantes: ${dbResult.error.missingVars.join(", ")}`);
-    }
-
-    process.exit(1);
-  }
-  console.log(`[INFO] Conexión a Base de Datos establecida`);
 
   const dirResult = FileManager.initializeDirectories();
   if (dirResult.success) {

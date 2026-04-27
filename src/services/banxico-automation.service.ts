@@ -311,7 +311,7 @@ export class BanxicoAutomation {
     format: FormatType = FormatType.BOTH,
     pauseSeconds: number = 10,
     browserType: BrowserType = BrowserType.CHROMIUM,
-    useHeadless: boolean = false
+    useHeadless: boolean = true
   ): Promise<AutomationResult> {
     const BrowserEngine = this.getBrowserEngine(browserType);
     let token: string | undefined;

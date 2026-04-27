@@ -61,6 +61,25 @@ export interface CepDaysRequest {
 }
 
 /**
+ * Request payload for CEP generation by a specific date
+ */
+export interface CepDateRequest {
+  email: string;
+  format: FormatType;
+  fecha_operacion: string;
+}
+
+/**
+ * Request payload for processing missing CEPs
+ */
+export interface CepMissingRequest {
+  email: string;
+  format: FormatType;
+  offset?: number;
+  limit?: number;
+}
+
+/**
  * Internal status tracking for CEP jobs
  */
 export interface CepStatus {

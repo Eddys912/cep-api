@@ -1,4 +1,3 @@
-import { cepRepository } from "../repositories/cep.repository";
 import { ExternalBatchResponse } from "../types/cep.types";
 
 export class ExternalDataService {
@@ -6,9 +5,9 @@ export class ExternalDataService {
   private readonly EXTERNAL_DAYS_URL = "https://tzmhgfjmddkfyffkkmto.supabase.co/functions/v1/get-cadenas-cep";
 
   /**
-   * Fetches data from the external endpoint and saves it to the local database
+   * Fetches data from the external endpoint for yesterday
    */
-  async syncExternalData(): Promise<{ success: boolean; count: number; error?: string }> {
+  async fetchYesterdayCeps(): Promise<{ success: boolean; data?: any[]; error?: string }> {
     try {
       console.log(`[INFO] Fetching external data from ${this.EXTERNAL_URL}`);
       const response = await fetch(this.EXTERNAL_URL);
@@ -23,36 +22,14 @@ export class ExternalDataService {
         throw new Error("Invalid data format from external endpoint");
       }
 
-      const recordsToSave = rawData.data.map((item: { cadena: string }) => {
-        // Format: fecha_operacion,claverastreo,institucion_ordenante,institucion_beneficiaria,cuenta_beneficiario,monto
-        const [fecha, claverastreo, emisora, receptora, cuenta, monto] = item.cadena.split(",");
-
-        return {
-          fecha_operacion: fecha,
-          claverastreo: claverastreo,
-          institucion_ordenante: emisora,
-          institucion_beneficiaria: receptora,
-          cuenta_beneficiario: cuenta,
-          monto: parseFloat(monto)
-        };
-      });
-
-      console.log(`[INFO] Saving ${recordsToSave.length} records to Supabase`);
-      const result = await cepRepository.saveRawCeps(recordsToSave);
-
-      if (!result.success) {
-        throw new Error(result.error?.message || "Error saving records to database");
-      }
-
       return {
         success: true,
-        count: recordsToSave.length
+        data: rawData.data
       };
     } catch (error) {
       console.error(`[ERROR] External data sync failed:`, error);
       return {
         success: false,
-        count: 0,
         error: error instanceof Error ? error.message : "Unknown error"
       };
     }
@@ -60,10 +37,7 @@ export class ExternalDataService {
 
   /**
    * Fetches CEP batch data from the external API by number of days back.
-   * Calls POST to get-cadenas-cep with { numero_dias_atras } in the body.
-   * Saves the batch as a group record in cep_lotes table.
    * @param {number} numeroDiasAtras - Number of days back to query
-   * @returns {Promise<{ success: boolean; batch?: ExternalBatchResponse; error?: string }>}
    */
   async fetchCepsByDays(numeroDiasAtras: number): Promise<{
     success: boolean;
@@ -91,29 +65,47 @@ export class ExternalDataService {
         throw new Error("Invalid batch data format from external endpoint");
       }
 
-      if (batchData.data.length === 0) {
-        return {
-          success: true,
-          batch: batchData,
-        };
-      }
+      return {
+        success: true,
+        batch: batchData,
+      };
+    } catch (error) {
+      console.error(`[ERROR] Fetch CEPs by days failed:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
 
-      // Save the batch as a group in the database
-      const cadenas = batchData.data.map((item) => item.cadena);
+  /**
+   * Fetches CEP batch data from the external API by specific date.
+   * @param {string} fechaOperacion - Specific date to query (YYYY-MM-DD)
+   */
+  async fetchCepsBySpecificDate(fechaOperacion: string): Promise<{
+    success: boolean;
+    batch?: ExternalBatchResponse;
+    error?: string;
+  }> {
+    try {
+      console.log(`[INFO] Fetching CEPs for date ${fechaOperacion} from ${this.EXTERNAL_DAYS_URL}`);
 
-      console.log(`[INFO] Saving batch (lote) with ${cadenas.length} cadenas for fecha_operacion: ${batchData.fecha_operacion}`);
-      const saveResult = await cepRepository.saveCepBatch({
-        fecha_operacion: batchData.fecha_operacion,
-        numero_dias_atras: batchData.numero_dias_atras,
-        total: batchData.total,
-        cadenas,
+      const response = await fetch(this.EXTERNAL_DAYS_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fecha_operacion: fechaOperacion }),
       });
 
-      if (!saveResult.success) {
-        console.warn(`[WARN] Failed to save batch to database: ${saveResult.error?.message}`);
-        // Continue anyway - we have the data in memory
-      } else {
-        console.log(`[INFO] Batch saved successfully to cep_lotes`);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch CEP data by date: ${response.status} ${response.statusText}`);
+      }
+
+      const batchData: ExternalBatchResponse = await response.json();
+
+      if (!batchData.data || !Array.isArray(batchData.data)) {
+        throw new Error("Invalid batch data format from external endpoint");
       }
 
       return {
@@ -121,7 +113,46 @@ export class ExternalDataService {
         batch: batchData,
       };
     } catch (error) {
-      console.error(`[ERROR] Fetch CEPs by days failed:`, error);
+      console.error(`[ERROR] Fetch CEPs by date failed:`, error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Unknown error",
+      };
+    }
+  }
+
+  /**
+   * Fetches missing CEP data from the external n8n webhook.
+   */
+  async fetchMissingCeps(): Promise<{ success: boolean; data?: any[]; error?: string }> {
+    try {
+      const url = "https://automatizacion-n8n.fbqqbe.easypanel.host/webhook/cep-faltantes";
+      console.log(`[INFO] Fetching missing CEPs from ${url}`);
+      
+      // We use GET by default, n8n webhooks usually accept GET for fetching
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch missing CEPs: ${response.status} ${response.statusText}`);
+      }
+
+      const rawData = await response.json();
+      
+      let cadenasArray: any[] = [];
+      if (Array.isArray(rawData)) {
+        cadenasArray = rawData;
+      } else if (rawData.data && Array.isArray(rawData.data)) {
+        cadenasArray = rawData.data;
+      } else {
+        throw new Error("Invalid format from missing CEPs endpoint");
+      }
+
+      return {
+        success: true,
+        data: cadenasArray,
+      };
+    } catch (error) {
+      console.error(`[ERROR] Fetch missing CEPs failed:`, error);
       return {
         success: false,
         error: error instanceof Error ? error.message : "Unknown error",

@@ -1,13 +1,8 @@
 import { Request, Response } from "express";
-import fs from "fs";
-import { cepFromDates, cepFromBatch } from "../services/cep.service";
+import { cepFromBatch, cepFromMissing } from "../services/cep.service";
 import { externalDataService } from "../services/external-data.service";
-import { cepRepository } from "../repositories/cep.repository";
-import { getYesterdayDate } from "../utils/date-yesterday";
 import {
   CepErrorResponse,
-  CepListResponse,
-  CepRequest,
   CepResponse,
   CepStatus,
   CepStatusResponse,
@@ -16,7 +11,6 @@ import { CepTypeStatus, FormatType } from "../types/global.enums";
 import { generateId } from "../utils/id-generator";
 
 // In-memory storage for CEP status
-// TODO: Consider moving this to Redis or Database for persistence across restarts
 const ceps = new Map<string, CepStatus>();
 
 /**
@@ -52,28 +46,61 @@ function validateCepRequest(body: any): { valid: boolean; error?: string } {
 }
 
 /**
- * Shared logic for initiating a CEP generation job
+ * Generates CEPs for yesterday
  */
-async function initiateCepJob(req: Request, res: Response<CepResponse | CepErrorResponse>, payload: CepRequest, dateStr?: string) {
+export async function generateFromYesterday(req: Request, res: Response<CepResponse | CepErrorResponse>) {
+  const validation = validateCepRequest(req.body);
+  if (!validation.valid) {
+    console.warn(`[WARN] Solicitud inválida: ${validation.error}`);
+    return res.status(400).json({ error: validation.error! });
+  }
+
+  console.log(`[INFO] Solicitando CEPs de ayer...`);
+  const fetchResult = await externalDataService.fetchYesterdayCeps();
+
+  if (!fetchResult.success || !fetchResult.data) {
+    console.error(`[ERROR] Fallo al obtener lote de la API externa: ${fetchResult.error}`);
+    return res.status(502).json({
+      error: `Error al obtener datos de la API externa: ${fetchResult.error}`,
+      status: CepTypeStatus.FAILED,
+    });
+  }
+
+  const data = fetchResult.data;
+
+  if (data.length === 0) {
+    console.warn(`[WARN] No se encontraron registros para ayer`);
+    return res.status(404).json({
+      error: `No hay registros disponibles para ayer.`,
+      status: CepTypeStatus.FAILED,
+    });
+  }
+
   try {
+    let dateStr;
+    if (data[0] && data[0].cadena) {
+      dateStr = data[0].cadena.split(",")[0];
+    }
     const cepId = generateId(dateStr);
-    console.log(`[INFO] Iniciando trabajo CEP: ${cepId} para ${payload.email}`);
+    console.log(`[INFO] Iniciando trabajo CEP (ayer): ${cepId} para ${req.body.email}`);
 
     const cep: CepStatus = {
       cep_id: cepId,
       status: CepTypeStatus.PENDING,
       created_at: new Date().toISOString(),
-      email: payload.email,
-      format: payload.format,
-      start_date: payload.start_date,
-      end_date: payload.end_date,
+      email: req.body.email,
+      format: req.body.format,
+      fecha_operacion: dateStr || undefined,
     };
 
     ceps.set(cepId, cep);
 
-    // Fire and forget - process in background
-    cepFromDates(cepId, ceps, payload).catch((err) => {
-      console.error(`[ERROR] Fallo en procesamiento de CEP ${cepId}:`, err);
+    // Reuse cepFromMissing since it just processes an array of cadenas
+    cepFromMissing(cepId, ceps, {
+      email: req.body.email,
+      format: req.body.format
+    }, data).catch((err) => {
+      console.error(`[ERROR] Fallo en procesamiento de CEP ${cepId} (ayer):`, err);
       const cep = ceps.get(cepId);
       if (cep) {
         cep.status = CepTypeStatus.FAILED;
@@ -84,11 +111,11 @@ async function initiateCepJob(req: Request, res: Response<CepResponse | CepError
 
     return res.status(202).json({
       cep_id: cepId,
-      message: "Trabajo iniciado correctamente",
+      message: `Trabajo iniciado correctamente. Registros: ${data.length}`,
       status: CepTypeStatus.PENDING,
     });
   } catch (error) {
-    console.error(`[ERROR] Error iniciando trabajo CEP:`, error);
+    console.error(`[ERROR] Error iniciando trabajo CEP (ayer):`, error);
     return res.status(500).json({
       error: error instanceof Error ? error.message : "Error interno del servidor",
       status: CepTypeStatus.FAILED,
@@ -97,110 +124,26 @@ async function initiateCepJob(req: Request, res: Response<CepResponse | CepError
 }
 
 /**
- * Generates CEPs for yesterday
+ * Generates CEPs for a specific operation date by pulling from the external webhook
  */
-export async function generateFromYesterday(req: Request, res: Response<CepResponse | CepErrorResponse>) {
+export async function generateFromSpecificDate(req: Request, res: Response<CepResponse | CepErrorResponse>) {
   const validation = validateCepRequest(req.body);
   if (!validation.valid) {
     console.warn(`[WARN] Solicitud inválida: ${validation.error}`);
     return res.status(400).json({ error: validation.error! });
   }
 
-  // Sync data first
-  try {
-    await externalDataService.syncExternalData();
-  } catch (error) {
-    console.warn(`[WARN] Fallo sincronización externa, continuando con datos locales:`, error);
+  const { fecha_operacion } = req.body;
+
+  if (!fecha_operacion || typeof fecha_operacion !== "string") {
+    return res.status(400).json({ error: "El parámetro fecha_operacion es requerido en formato YYYY-MM-DD" });
   }
 
-  // Check if records exist
-  const yesterday = getYesterdayDate();
-  const queryResult = await cepRepository.getCepsByDate(yesterday);
-  if (!queryResult.success || !queryResult.data || queryResult.data.length === 0) {
-    console.warn(`[WARN] No se encontraron registros para ayer (${yesterday})`);
-    return res.status(404).json({
-      error: `No hay registros disponibles para ayer (${yesterday}).`,
-      status: CepTypeStatus.FAILED,
-    });
-  }
-
-  return initiateCepJob(req, res, {
-    email: req.body.email,
-    format: req.body.format,
-  }, yesterday);
-}
-
-/**
- * Generates CEPs for a specific date range
- */
-export async function generateFromDateRange(req: Request, res: Response<CepResponse | CepErrorResponse>) {
-  const validation = validateCepRequest(req.body);
-  if (!validation.valid) {
-    console.warn(`[WARN] Solicitud inválida: ${validation.error}`);
-    return res.status(400).json({ error: validation.error! });
-  }
-
-  const { start_date, end_date } = req.body;
-  if (!start_date || !end_date) {
-    console.warn(`[WARN] Faltan fechas en la solicitud`);
-    return res.status(400).json({ error: "start_date y end_date son requeridos" });
-  }
-
-  // Sync data first
-  try {
-    await externalDataService.syncExternalData();
-  } catch (error) {
-    console.warn(`[WARN] Fallo sincronización externa, continuando con datos locales:`, error);
-  }
-
-  // Check if records exist
-  const queryResult = await cepRepository.getCepsByDateRange(start_date, end_date);
-  if (!queryResult.success || !queryResult.data || queryResult.data.length === 0) {
-    console.warn(`[WARN] No se encontraron registros para el rango: ${start_date} - ${end_date}`);
-    return res.status(404).json({
-      error: `No se encontraron registros entre ${start_date} y ${end_date}.`,
-      status: CepTypeStatus.FAILED,
-    });
-  }
-
-  return initiateCepJob(req, res, {
-    email: req.body.email,
-    format: req.body.format,
-    start_date,
-    end_date,
-  }, start_date);
-}
-
-/**
- * Generates CEPs for the last N days via external batch API
- */
-export async function generateFromDays(req: Request, res: Response<CepResponse | CepErrorResponse>) {
-  const validation = validateCepRequest(req.body);
-  if (!validation.valid) {
-    console.warn(`[WARN] Solicitud inválida: ${validation.error}`);
-    return res.status(400).json({ error: validation.error! });
-  }
-
-  const { numero_dias_atras } = req.body;
-
-  if (numero_dias_atras === undefined || numero_dias_atras === null) {
-    return res.status(400).json({ error: "El campo 'numero_dias_atras' es requerido" });
-  }
-
-  const parsedDays = Number(numero_dias_atras);
-
-  if (!Number.isInteger(parsedDays) || parsedDays <= 0) {
-    return res.status(400).json({
-      error: "El campo 'numero_dias_atras' debe ser un número entero positivo",
-    });
-  }
-
-  // 1. Fetch batch from external API
-  console.log(`[INFO] Solicitando lote de CEPs para ${parsedDays} días atrás...`);
-  const fetchResult = await externalDataService.fetchCepsByDays(parsedDays);
+  console.log(`[INFO] Solicitando lote de CEPs para fecha_operacion=${fecha_operacion}`);
+  const fetchResult = await externalDataService.fetchCepsBySpecificDate(fecha_operacion);
 
   if (!fetchResult.success || !fetchResult.batch) {
-    console.error(`[ERROR] Fallo al obtener lote de la API externa: ${fetchResult.error}`);
+    console.error(`[ERROR] Fallo al obtener datos de fecha específica: ${fetchResult.error}`);
     return res.status(502).json({
       error: `Error al obtener datos de la API externa: ${fetchResult.error}`,
       status: CepTypeStatus.FAILED,
@@ -209,20 +152,17 @@ export async function generateFromDays(req: Request, res: Response<CepResponse |
 
   const batch = fetchResult.batch;
 
-  if (!batch.data || batch.data.length === 0) {
-    console.warn(`[WARN] No se encontraron registros para ${parsedDays} días atrás`);
+  if (batch.data.length === 0) {
+    console.warn(`[WARN] No se encontraron registros en el endpoint externo para fecha_operacion=${fecha_operacion}`);
     return res.status(404).json({
-      error: `No hay registros disponibles para ${parsedDays} días atrás (fecha_operacion: ${batch.fecha_operacion}).`,
+      error: `No hay registros disponibles en el endpoint externo para fecha_operacion=${fecha_operacion}.`,
       status: CepTypeStatus.FAILED,
     });
   }
 
-  console.log(`[INFO] Lote recibido: fecha_operacion=${batch.fecha_operacion}, total=${batch.total}`);
-
-  // 2. Create CEP job
   try {
     const cepId = generateId(batch.fecha_operacion);
-    console.log(`[INFO] Iniciando trabajo CEP (batch): ${cepId} para ${req.body.email}`);
+    console.log(`[INFO] Iniciando trabajo CEP (specific date): ${cepId} para ${req.body.email}`);
 
     const cep: CepStatus = {
       cep_id: cepId,
@@ -231,18 +171,17 @@ export async function generateFromDays(req: Request, res: Response<CepResponse |
       email: req.body.email,
       format: req.body.format,
       fecha_operacion: batch.fecha_operacion,
-      numero_dias_atras: batch.numero_dias_atras,
+      numero_dias_atras: batch.numero_dias_atras || 0,
     };
 
     ceps.set(cepId, cep);
 
-    // Fire and forget - process in background using batch workflow
     cepFromBatch(cepId, ceps, {
       email: req.body.email,
       format: req.body.format,
-      numero_dias_atras: parsedDays,
+      numero_dias_atras: batch.numero_dias_atras || 0,
     }, batch).catch((err) => {
-      console.error(`[ERROR] Fallo en procesamiento de CEP ${cepId} (batch):`, err);
+      console.error(`[ERROR] Fallo en procesamiento de CEP ${cepId} (specific date):`, err);
       const cep = ceps.get(cepId);
       if (cep) {
         cep.status = CepTypeStatus.FAILED;
@@ -257,7 +196,7 @@ export async function generateFromDays(req: Request, res: Response<CepResponse |
       status: CepTypeStatus.PENDING,
     });
   } catch (error) {
-    console.error(`[ERROR] Error iniciando trabajo CEP (batch):`, error);
+    console.error(`[ERROR] Error iniciando trabajo CEP (specific date):`, error);
     return res.status(500).json({
       error: error instanceof Error ? error.message : "Error interno del servidor",
       status: CepTypeStatus.FAILED,
@@ -300,102 +239,95 @@ export async function getCepStatus(req: Request, res: Response<CepStatusResponse
 }
 
 /**
- * Downloads the result file for a CEP job
+ * Generates CEPs by fetching from the missing CEPs webhook and slicing the array.
  */
-export async function downloadResult(req: Request, res: Response) {
-  try {
-    const { cepId } = req.params;
-    const cep = ceps.get(cepId as string);
+export async function generateMissing(req: Request, res: Response<CepResponse | CepErrorResponse>) {
+  const validation = validateCepRequest(req.body);
+  if (!validation.valid) {
+    console.warn(`[WARN] Solicitud inválida: ${validation.error}`);
+    return res.status(400).json({ error: validation.error! });
+  }
 
-    if (!cep) {
-      return res.status(404).json({ error: "Trabajo no encontrado" });
-    }
+  const offset = req.body.offset !== undefined ? Number(req.body.offset) : 0;
+  const limit = req.body.limit !== undefined ? Number(req.body.limit) : 500;
 
-    if (cep.status !== CepTypeStatus.COMPLETED) {
-      return res.status(400).json({
-        error: `El trabajo está en estado: ${cep.status}`,
-        status: cep.status,
-      });
-    }
+  if (isNaN(offset) || offset < 0) {
+    return res.status(400).json({ error: "El campo 'offset' debe ser un número positivo (o cero)" });
+  }
 
-    if (!cep.banxico_result_path) {
-      console.error(`[ERROR] Ruta de archivo no encontrada para CEP ${cepId}`);
-      return res.status(404).json({ error: "Archivo no encontrado" });
-    }
+  if (isNaN(limit) || limit <= 0 || limit > 1000) {
+    return res.status(400).json({ error: "El campo 'limit' debe ser un número entre 1 y 1000" });
+  }
 
-    // If it's a remote URL (Supabase Storage), redirect
-    if (cep.banxico_result_path.startsWith("http")) {
-      console.log(`[INFO] Redirigiendo a descarga remota para CEP ${cepId}`);
-      return res.redirect(cep.banxico_result_path);
-    }
+  console.log(`[INFO] Solicitando CEPs faltantes (offset: ${offset}, limit: ${limit})`);
+  const fetchResult = await externalDataService.fetchMissingCeps();
 
-    // If it's a local file, download it
-    if (fs.existsSync(cep.banxico_result_path)) {
-      console.log(`[INFO] Descargando archivo local para CEP ${cepId}`);
-      return res.download(cep.banxico_result_path, `${cepId}.zip`, (err) => {
-        if (err && !res.headersSent) {
-          console.error(`[ERROR] Error enviando archivo:`, err);
-          res.status(500).json({ error: "Error descargando archivo" });
-        }
-      });
-    }
-
-    return res.status(404).json({ error: "Archivo físico no encontrado" });
-  } catch (error) {
-    console.error(`[ERROR] Error en descarga:`, error);
-    return res.status(500).json({
-      error: "Error interno procesando descarga",
+  if (!fetchResult.success || !fetchResult.data) {
+    console.error(`[ERROR] Fallo al obtener faltantes: ${fetchResult.error}`);
+    return res.status(502).json({
+      error: `Error al obtener faltantes de la API externa: ${fetchResult.error}`,
+      status: CepTypeStatus.FAILED,
     });
   }
-}
 
-/**
- * Lists all CEP jobs
- */
-export async function listCeps(req: Request, res: Response<CepListResponse | CepErrorResponse>) {
-  try {
-    const cepList = Array.from(ceps.values()).map((cep) => ({
-      cep_id: cep.cep_id,
-      status: cep.status,
-      created_at: cep.created_at,
-      completed_at: cep.completed_at,
-      email: cep.email,
-      records_processed: cep.records_processed,
-      fecha_operacion: cep.fecha_operacion,
-    }));
+  const totalAvailable = fetchResult.data.length;
+  const slicedData = fetchResult.data.slice(offset, offset + limit);
 
-    return res.json({
-      total: cepList.length,
-      ceps: cepList,
-    });
-  } catch (error) {
-    console.error(`[ERROR] Error listando CEPs:`, error);
-    return res.status(500).json({
-      error: "Error obteniendo lista de trabajos",
+  if (slicedData.length === 0) {
+    console.warn(`[WARN] No se encontraron registros faltantes en el offset ${offset}`);
+    return res.status(404).json({
+      error: `No hay registros faltantes disponibles en el offset ${offset}. Total disponible: ${totalAvailable}`,
+      status: CepTypeStatus.FAILED,
     });
   }
-}
 
-/**
- * Manually triggers a sync with the external data source
- */
-export async function syncExternalData(req: Request, res: Response) {
+  console.log(`[INFO] Lote faltantes obtenido: procesando ${slicedData.length} de ${totalAvailable}`);
+
   try {
-    const result = await externalDataService.syncExternalData();
-    if (result.success) {
-      return res.json({
-        message: "Sincronización completada",
-        count: result.count,
-      });
-    } else {
-      return res.status(500).json({
-        error: result.error || "Fallo en la sincronización",
-      });
+    let dateStr;
+    if (slicedData[0] && slicedData[0].cadena) {
+      dateStr = slicedData[0].cadena.split(",")[0];
     }
+    const cepId = generateId(dateStr);
+    console.log(`[INFO] Iniciando trabajo CEP (faltantes): ${cepId} para ${req.body.email}`);
+
+    const cep: CepStatus = {
+      cep_id: cepId,
+      status: CepTypeStatus.PENDING,
+      created_at: new Date().toISOString(),
+      email: req.body.email,
+      format: req.body.format,
+      fecha_operacion: dateStr || undefined,
+    };
+
+    ceps.set(cepId, cep);
+
+    // Fire and forget - process in background
+    cepFromMissing(cepId, ceps, {
+      email: req.body.email,
+      format: req.body.format,
+      offset,
+      limit
+    }, slicedData).catch((err) => {
+      console.error(`[ERROR] Fallo en procesamiento de CEP ${cepId} (faltantes):`, err);
+      const cep = ceps.get(cepId);
+      if (cep) {
+        cep.status = CepTypeStatus.FAILED;
+        cep.error = err.message || "Error desconocido";
+        cep.completed_at = new Date().toISOString();
+      }
+    });
+
+    return res.status(202).json({
+      cep_id: cepId,
+      message: `Trabajo de faltantes iniciado. Offset: ${offset}, Limit: ${limit}, Obtenidos: ${slicedData.length} de ${totalAvailable}`,
+      status: CepTypeStatus.PENDING,
+    });
   } catch (error) {
-    console.error(`[ERROR] Error en endpoint de sincronización:`, error);
+    console.error(`[ERROR] Error iniciando trabajo CEP (faltantes):`, error);
     return res.status(500).json({
-      error: "Error interno procesando sincronización",
+      error: error instanceof Error ? error.message : "Error interno del servidor",
+      status: CepTypeStatus.FAILED,
     });
   }
 }
