@@ -1,4 +1,4 @@
-import { Page } from "playwright";
+import { Page } from 'playwright';
 
 interface MouseMovementConfig {
   steps?: number;
@@ -21,7 +21,13 @@ export async function moveMouseHuman(
   y: number,
   config: MouseMovementConfig = {}
 ): Promise<void> {
-  const { steps = Math.floor(Math.random() * 10) + 15, minDelay = 5, maxDelay = 20, offsetX = 5, offsetY = 3 } = config;
+  const {
+    steps = Math.floor(Math.random() * 10) + 15,
+    minDelay = 5,
+    maxDelay = 20,
+    offsetX = 5,
+    offsetY = 3,
+  } = config;
 
   const finalX = x + (Math.random() - 0.5) * offsetX * 2;
   const finalY = y + (Math.random() - 0.5) * offsetY * 2;
@@ -31,7 +37,8 @@ export async function moveMouseHuman(
 
   for (let i = 0; i <= steps; i++) {
     const progress = i / steps;
-    const easeProgress = progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
+    const easeProgress =
+      progress < 0.5 ? 2 * progress * progress : 1 - Math.pow(-2 * progress + 2, 2) / 2;
     const nx = currentX + (finalX - currentX) * easeProgress;
     const ny = currentY + (finalY - currentY) * easeProgress;
     await page.mouse.move(nx, ny);
@@ -61,7 +68,7 @@ export async function scrollHuman(page: Page, config: ScrollConfig = {}): Promis
   await page.evaluate((amount) => {
     window.scrollBy({
       top: amount,
-      behavior: "smooth",
+      behavior: 'smooth',
     });
   }, scrollAmount);
   await page.waitForTimeout(Math.random() * (maxDelay - minDelay) + minDelay);
@@ -81,11 +88,16 @@ export interface RecaptchaResult {
  * @param {number} timeout - Maximum time to wait in milliseconds
  * @returns {Promise<RecaptchaResult>} Result indicating if reCAPTCHA was solved
  */
-export async function waitForRecaptcha(page: Page, timeout: number = 15000): Promise<RecaptchaResult> {
+export async function waitForRecaptcha(
+  page: Page,
+  timeout: number = 15000
+): Promise<RecaptchaResult> {
   try {
     await page.waitForFunction(
       () => {
-        const response = document.getElementById("g-recaptcha-response-100000") as HTMLTextAreaElement;
+        const response = document.getElementById(
+          'g-recaptcha-response-100000'
+        ) as HTMLTextAreaElement;
         return response && response.value && response.value.length > 0;
       },
       { timeout }
@@ -115,7 +127,10 @@ interface HumanActivityConfig {
  * @param {Page} page - Playwright page instance
  * @param {HumanActivityConfig} config - Configuration options
  */
-export async function simulateHumanActivity(page: Page, config: HumanActivityConfig = {}): Promise<void> {
+export async function simulateHumanActivity(
+  page: Page,
+  config: HumanActivityConfig = {}
+): Promise<void> {
   const {
     movements = 2,
     minX = 100,
@@ -137,7 +152,7 @@ export async function simulateHumanActivity(page: Page, config: HumanActivityCon
   await page.evaluate((amount) => {
     window.scrollTo({
       top: Math.random() * amount,
-      behavior: "smooth",
+      behavior: 'smooth',
     });
   }, scrollAmount);
   await page.waitForTimeout(Math.random() * (maxDelay - minDelay) + minDelay);

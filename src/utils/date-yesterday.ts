@@ -1,11 +1,51 @@
 /**
- * Utility function to get yesterday's date in ISO format (YYYY-MM-DD)
- * @returns {string} Yesterday's date in ISO format
+ * Formats a Date object using Mexico City local date in YYYY-MM-DD.
+ */
+function formatDateInMexico(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}
+
+/**
+ * Returns current date-time in Mexico City timezone as YYYY-MM-DDTHH:mm:ss.
+ */
+export function getMexicoDateTimeISO(date: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat('sv-SE', {
+    timeZone: 'America/Mexico_City',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(date);
+
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? '00';
+  return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`;
+}
+
+/**
+ * Returns current date in Mexico City timezone as YYYY-MM-DD.
+ */
+export function getMexicoTodayDate(): string {
+  return formatDateInMexico(new Date());
+}
+
+/**
+ * Utility function to get yesterday's date in Mexico City timezone (YYYY-MM-DD)
  */
 export function getYesterdayDate(): string {
-  const yesterday = new Date();
-  yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().split("T")[0];
+  const mexicoToday = getMexicoTodayDate();
+  const mexicoNow = new Date(`${mexicoToday}T12:00:00-06:00`);
+  mexicoNow.setDate(mexicoNow.getDate() - 1);
+
+  // formatDateInMexico ensures the final date string is normalized to Mexico timezone.
+  return formatDateInMexico(mexicoNow);
 }
 
 /**
@@ -14,9 +54,10 @@ export function getYesterdayDate(): string {
  * @returns {string} Date in ISO format
  */
 export function getDateDaysAgo(daysAgo: number): string {
-  const date = new Date();
-  date.setDate(date.getDate() - daysAgo);
-  return date.toISOString().split("T")[0];
+  const todayMexico = getMexicoTodayDate();
+  const base = new Date(`${todayMexico}T12:00:00-06:00`);
+  base.setDate(base.getDate() - daysAgo);
+  return formatDateInMexico(base);
 }
 
 /**
@@ -25,5 +66,5 @@ export function getDateDaysAgo(daysAgo: number): string {
  * @returns {string} Date in ISO format
  */
 export function formatDateToISO(date: Date): string {
-  return date.toISOString().split("T")[0];
+  return formatDateInMexico(date);
 }

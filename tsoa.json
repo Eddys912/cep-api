@@ -1,0 +1,28 @@
+{
+  "entryFile": "src/app.ts",
+  "noImplicitAdditionalProperties": "throw-on-extras",
+  "controllerPathGlobs": ["src/controllers/*Controller.ts"],
+  "spec": {
+    "outputDirectory": "src",
+    "specVersion": 3,
+    "name": "CEP & STP API",
+    "description": "API para gestión de CEPs de Banxico y webhooks STP",
+    "version": "1.0.0"
+  },
+  "routes": {
+    "routesDir": "src",
+    "middleware": "express"
+  },
+  "compilerOptions": {
+    "paths": {
+      "@src/*": ["src/*"],
+      "@config/*": ["src/config/*"],
+      "@controllers/*": ["src/controllers/*"],
+      "@middleware/*": ["src/middleware/*"],
+      "@services/*": ["src/services/*"],
+      "@defs/*": ["src/types/*"],
+      "@utils/*": ["src/utils/*"],
+      "@tests/*": ["tests/*"]
+    }
+  }
+}
