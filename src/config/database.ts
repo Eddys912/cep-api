@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { env } from './env';
+
+import { env } from '@config/env';
 
 export interface SupabaseClients {
   claro: SupabaseClient;
