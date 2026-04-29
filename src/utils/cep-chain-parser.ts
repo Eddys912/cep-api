@@ -21,9 +21,7 @@ export function extractChainFromExternalItem(item: unknown): string | undefined 
 export function parseBanxicoChainToTxtRow(chain: string): BanxicoTxtRow {
   const parts = chain.split(',').map((s) => s.trim());
   if (parts.length < 6) {
-    throw new Error(
-      `Invalid chain: expected 6 comma-separated fields, got ${parts.length}`
-    );
+    throw new Error(`Invalid chain: expected 6 comma-separated fields, got ${parts.length}`);
   }
   const [
     paymentDate,

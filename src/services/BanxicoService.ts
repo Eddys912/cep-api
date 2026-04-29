@@ -1,18 +1,20 @@
-import fs from "fs";
-import { CepStatus } from "../types/cep.types";
-import { BrowserType, CepTypeStatus, FormatType } from "../types/global.enums";
-import { FileManager } from "../utils/file-manager";
-import { BanxicoAutomation } from "./banxico-automation.service";
+import axios from 'axios';
+import fs from 'fs';
 
-const BROWSER_ORDER = [BrowserType.CHROMIUM, BrowserType.FIREFOX, BrowserType.WEBKIT];
-const IS_DEV = process.env.NODE_ENV !== "production";
+import { env } from '@config/env';
+import { logger } from '@config/logger';
 
-interface AutomationServiceResult {
-  success: boolean;
-  token?: string;
-  downloadUrl?: string;
-  error?: string;
-}
+import { CepStatus } from '@defs/cep.types';
+import { BrowserType, CepTypeStatus, FormatType } from '@defs/global.enums';
+import { BanxicoAutomation } from '@services/BanxicoAutomationService';
+import { getMexicoDateTimeISO } from '@utils/date-yesterday';
+import { FileManager } from '@utils/file-manager';
+
+const ALL_BROWSERS = [BrowserType.CHROMIUM, BrowserType.FIREFOX, BrowserType.WEBKIT] as const;
+const BROWSER_ORDER = [
+  env.CEP_PLAYWRIGHT_BROWSER,
+  ...ALL_BROWSERS.filter((browser) => browser !== env.CEP_PLAYWRIGHT_BROWSER),
+];
 
 /**
  * Sleeps for a given amount of milliseconds
@@ -22,8 +24,6 @@ async function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-
-
 /**
  * Uploads the ZIP file to the n8n production webhook
  * @param {string} filePath - Path to the local file
@@ -31,25 +31,18 @@ async function sleep(ms: number): Promise<void> {
  */
 async function uploadToN8n(filePath: string, cepId: string): Promise<void> {
   try {
-    console.log(`[INFO] Subiendo archivo ${cepId}.zip a webhook de n8n...`);
+    logger.info({ cepId }, 'Subiendo archivo ZIP a webhook n8n');
     const fileBuffer = fs.readFileSync(filePath);
-    
+
     const formData = new FormData();
-    const blob = new Blob([fileBuffer], { type: "application/zip" });
-    formData.append("file", blob, `${cepId}.zip`);
+    const blob = new Blob([fileBuffer], { type: 'application/zip' });
+    formData.append('file', blob, `${cepId}.zip`);
 
-    const response = await fetch("https://automatizacion-n8n.fbqqbe.easypanel.host/webhook/cargarArchivoCep", {
-      method: "POST",
-      body: formData as any,
-    });
+    await axios.post(env.CEP_N8N_WEBHOOK_URL, formData);
 
-    if (!response.ok) {
-      throw new Error(`Error en n8n webhook: ${response.status} ${response.statusText}`);
-    }
-
-    console.log(`[SUCCESS] Archivo enviado a n8n con éxito`);
+    logger.info({ cepId }, 'Archivo enviado a n8n con exito');
   } catch (error) {
-    console.error(`[ERROR] Fallo al enviar archivo a n8n:`, error);
+    logger.error({ cepId, error }, 'Fallo al enviar archivo a n8n');
     throw error;
   }
 }
@@ -62,10 +55,10 @@ function cleanupFile(filePath: string): void {
   try {
     if (fs.existsSync(filePath)) {
       FileManager.deleteFile(filePath);
-      console.log(`[INFO] Archivo temporal eliminado: ${filePath}`);
+      logger.info({ filePath }, 'Archivo temporal eliminado');
     }
   } catch (error: any) {
-    console.warn(`[WARN] Falló limpieza de archivo ${filePath}: ${error.message}`);
+    logger.warn({ filePath, error: error.message }, 'Fallo limpieza de archivo temporal');
   }
 }
 
@@ -85,12 +78,23 @@ async function executeAutomationWithFallback(
     const attempt = i + 1;
 
     try {
-      console.log(`[INFO] Intento ${attempt}/${BROWSER_ORDER.length} con ${browserType.toUpperCase()}`);
+      logger.info(
+        { attempt, maxAttempts: BROWSER_ORDER.length, browserType },
+        'Intentando automatizacion Banxico con browser fallback'
+      );
 
       const pauseSeconds = i === 0 ? 10 : 20 + (i - 1) * 15;
       const automation = new BanxicoAutomation(cepId);
 
-      const result = await automation.automate(filepath, email, format, pauseSeconds, browserType, true);
+      const result = await automation.automate(
+        filepath,
+        email,
+        format,
+        pauseSeconds,
+        browserType,
+        env.CEP_PLAYWRIGHT_HEADLESS,
+        env.CEP_PLAYWRIGHT_RETRIES_PER_BROWSER
+      );
 
       return {
         token: result.token!,
@@ -98,18 +102,20 @@ async function executeAutomationWithFallback(
       };
     } catch (error) {
       lastError = error;
-      const errorMsg = error instanceof Error ? error.message : "Error desconocido";
-      console.error(`[ERROR] Fallo con ${browserType}: ${errorMsg}`);
+      const errorMsg = error instanceof Error ? error.message : 'Error desconocido';
+      logger.warn({ browserType, error: errorMsg }, 'Fallo de intento con navegador');
 
       if (i < BROWSER_ORDER.length - 1) {
         const delay = (i + 1) * 5000;
-        console.log(`[INFO] Esperando ${delay / 1000}s para siguiente intento...`);
+        logger.info({ delaySeconds: delay / 1000 }, 'Esperando antes del siguiente intento');
         await sleep(delay);
       }
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error("Falló la automatización con todos los navegadores");
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Falló la automatización con todos los navegadores');
 }
 
 /**
@@ -129,7 +135,12 @@ export async function runBanxicoAutomation(
 
   try {
     // 1. Run Automation
-    const { token, downloadPath } = await executeAutomationWithFallback(cepId, inputFilePath, email, format);
+    const { token, downloadPath } = await executeAutomationWithFallback(
+      cepId,
+      inputFilePath,
+      email,
+      format
+    );
     tempDownloadPath = downloadPath;
 
     // 2. Upload to n8n Webhook
@@ -138,14 +149,15 @@ export async function runBanxicoAutomation(
     // 3. Update Status
     cep.token = token;
     cep.status = CepTypeStatus.COMPLETED;
-    cep.banxico_result_path = "Enviado a n8n"; // Using string since download_available depends on it being truthy
-    cep.completed_at = new Date().toISOString();
-  } catch (error: any) {
-    console.error(`[ERROR] Proceso Banxico fallido para ${cepId}:`, error.message);
+    cep.banxicoResultPath = 'Enviado a n8n'; // truthy so downloadAvailable resolves correctly
+    cep.completedAt = getMexicoDateTimeISO();
+  } catch (error: unknown) {
+    const msg = error instanceof Error ? error.message : 'Unknown error';
+    logger.error({ cepId, error: msg }, 'Proceso Banxico fallido');
 
     cep.status = CepTypeStatus.FAILED;
-    cep.error = error.message;
-    cep.completed_at = new Date().toISOString();
+    cep.error = msg;
+    cep.completedAt = getMexicoDateTimeISO();
 
     // If we have a local file but upload failed, we might want to keep the local path as fallback?
     // Requirement says "nothing local", but for debugging/fallback maybe?
@@ -153,7 +165,7 @@ export async function runBanxicoAutomation(
   } finally {
     // 4. Cleanup
     if (tempDownloadPath) cleanupFile(tempDownloadPath);
-    // Note: inputFilePath is managed by cep.service / txt-generator, potentially should be cleaned too?
+    // Note: inputFilePath is managed by CepService / txt-generator, potentially should be cleaned too?
     // Leaving inputFilePath cleanup to caller or separate cleanup routine if intended.
   }
 }
