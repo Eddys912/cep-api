@@ -21,9 +21,9 @@ const toBoolean = z.preprocess((val) => {
 }, z.boolean());
 
 const schema = z.object({
-  PORT: z.coerce.number().positive().default(3001),
+  PORT: z.coerce.number().positive().default(3100),
   NODE_ENV: strictNodeEnv.default('development'),
-  URL_BASE: z.url().default('http://localhost:3001'),
+  URL_BASE: z.url().default('http://localhost:3100'),
   CEP_EXTERNAL_API_URL: z.url(),
   CEP_EXTERNAL_API_URL_MISSING: z.url(),
   CEP_EXTERNAL_API_KEY: z.string().optional(),

@@ -1,4 +1,4 @@
-name: Deploy VPS
+name: Deploy VPS (Docker)
 
 on:
   push:
@@ -6,11 +6,50 @@ on:
       - main
   workflow_dispatch:
 
+env:
+  # Nombre de la imagen en el GitHub Container Registry (GHCR)
+  IMAGE_NAME: ghcr.io/${{ github.repository_owner }}/server-stp
+
 jobs:
-  deploy:
+  build-and-deploy:
     runs-on: ubuntu-latest
 
+    # Permisos para poder publicar en GHCR
+    permissions:
+      contents: read
+      packages: write
+
     steps:
+      # 1. Checkout del código
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # 2. Login en GitHub Container Registry
+      - name: Login a GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 3. Construir la imagen Docker
+      #    Aquí es donde TypeScript se compila (dentro del builder stage).
+      #    El servidor NO necesita tener Node, pnpm, ni TypeScript instalados.
+      - name: Build imagen Docker
+        run: |
+          docker build \
+            -t ${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.IMAGE_NAME }}:${{ github.sha }} \
+            .
+
+      # 4. Publicar la imagen en GHCR
+      - name: Push imagen a GHCR
+        run: |
+          docker push ${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.IMAGE_NAME }}:${{ github.sha }}
+
+      # 5. Conectar al VPS por SSH y desplegar el contenedor
+      #    El servidor solo necesita tener Docker instalado.
       - name: Deploy por SSH
         uses: appleboy/ssh-action@v1.0.3
         with:
@@ -20,10 +59,30 @@ jobs:
           port: ${{ secrets.VPS_PORT }}
           script: |
             set -e
-            cd ~/server-stp
-            git fetch origin
-            git reset --hard origin/main
-            npm install --omit=dev
-            pm2 restart server-stp
-            pm2 save
 
+            # Login en GHCR desde el servidor (mismo token del workflow; sin PAT manual)
+            echo "${{ github.token }}" | docker login ghcr.io -u "${{ github.actor }}" --password-stdin
+
+            # Descargar la nueva imagen
+            docker pull ${{ env.IMAGE_NAME }}:latest
+
+            # Validar que el .env exista y sea administrado manualmente en el VPS
+            test -f ~/server-stp/.env
+
+            # Detener y eliminar el contenedor anterior (si existe)
+            docker stop server-stp || true
+            docker rm server-stp || true
+
+            # Levantar el nuevo contenedor
+            # --env-file: usa el archivo .env que YA existe en el servidor
+            # --network host: COMPARTE la red del servidor. Esto garantiza que la VPN de STP funcione 100% igual que si no usaras Docker.
+            # --restart always: se reinicia solo si el servidor se apaga/reinicia
+            docker run -d \
+              --name server-stp \
+              --restart always \
+              --env-file ~/server-stp/.env \
+              --network host \
+              ${{ env.IMAGE_NAME }}:latest
+
+            # Limpiar imágenes viejas para no llenar el disco
+            docker image prune -f
