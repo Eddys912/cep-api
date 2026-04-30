@@ -4,9 +4,7 @@ npm-debug.log*
 pnpm-debug.log*
 yarn-debug.log*
 
-# Package manager lock files (except npm)
-pnpm-lock.yaml
-yarn.lock
+# Lockfiles: pnpm-lock.yaml must be sent to Docker for reproducible installs (frozen-lockfile).
 
 # VERSION CONTROL
 .git/
