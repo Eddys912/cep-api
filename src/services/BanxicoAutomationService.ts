@@ -1,9 +1,13 @@
-import { Browser, chromium, firefox, Page, webkit } from "playwright";
-import { BrowserType, FormatType } from "../types/global.enums";
-import { FileManager } from "../utils/file-manager";
-import { moveMouseHuman, simulateHumanActivity, waitForRecaptcha } from "../utils/human-events";
+import fs from 'fs';
+import { Browser, chromium, firefox, Page, webkit } from 'playwright';
 
-const isDev = process.env.NODE_ENV !== "production";
+import { logger } from '@config/logger';
+
+import { BrowserType, FormatType } from '@defs/global.enums';
+import { FileManager } from '@utils/file-manager';
+import { moveMouseHuman, simulateHumanActivity, waitForRecaptcha } from '@utils/human-events';
+
+const isDev = process.env.NODE_ENV !== 'production';
 
 export interface AutomationResult {
   success: boolean;
@@ -42,28 +46,30 @@ export class BanxicoAutomation {
   private getContextOptions(browserType: BrowserType) {
     const options: any = {
       viewport: { width: 1366, height: 768 },
-      locale: "es-MX",
-      timezoneId: "America/Mexico_City",
+      locale: 'es-MX',
+      timezoneId: 'America/Mexico_City',
       acceptDownloads: true,
       ignoreHTTPSErrors: true,
       extraHTTPHeaders: {
-        "Accept-Language": "es-MX,es;q=0.9,en;q=0.8",
-        Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        "Accept-Encoding": "gzip, deflate, br",
-        Connection: "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
+        'Accept-Language': 'es-MX,es;q=0.9,en;q=0.8',
+        Accept:
+          'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+        'Accept-Encoding': 'gzip, deflate, br',
+        Connection: 'keep-alive',
+        'Upgrade-Insecure-Requests': '1',
       },
-      permissions: ["geolocation"],
-      colorScheme: "light",
+      permissions: ['geolocation'],
+      colorScheme: 'light',
       deviceScaleFactor: 1,
       javaScriptEnabled: true,
     };
 
     if (browserType === BrowserType.CHROMIUM) {
       options.userAgent =
-        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36';
     } else if (browserType === BrowserType.FIREFOX) {
-      options.userAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0";
+      options.userAgent =
+        'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0';
     }
 
     return options;
@@ -75,27 +81,27 @@ export class BanxicoAutomation {
   private getLaunchOptions(browserType: BrowserType, useHeadless: boolean) {
     const options: any = {
       headless: useHeadless,
-      args: ["--lang=es-MX,es"],
+      args: ['--lang=es-MX,es'],
     };
 
     if (browserType === BrowserType.CHROMIUM) {
       options.args.push(
-        "--ignore-certificate-errors",
-        "--window-position=0,0",
-        "--disable-dev-shm-usage",
-        "--no-sandbox",
-        "--disable-setuid-sandbox",
-        "--disable-infobars",
-        "--disable-blink-features=AutomationControlled",
-        "--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+        '--ignore-certificate-errors',
+        '--window-position=0,0',
+        '--disable-dev-shm-usage',
+        '--no-sandbox',
+        '--disable-setuid-sandbox',
+        '--disable-infobars',
+        '--disable-blink-features=AutomationControlled',
+        '--user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36'
       );
     } else if (browserType === BrowserType.FIREFOX) {
-      options.args.push("--ignore-certificate-errors");
+      options.args.push('--ignore-certificate-errors');
       options.firefoxUserPrefs = {
-        "dom.webdriver.enabled": false,
+        'dom.webdriver.enabled': false,
         useAutomationExtension: false,
-        "general.useragent.override":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0",
+        'general.useragent.override':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:131.0) Gecko/20100101 Firefox/131.0',
       };
     }
 
@@ -111,10 +117,10 @@ export class BanxicoAutomation {
     email: string,
     format: FormatType
   ): Promise<string> {
-    console.log(`[INFO] Subiendo archivo para CEP ${this.cepId}...`);
+    logger.info({ cepId: this.cepId }, 'Subiendo archivo para CEP');
     await simulateHumanActivity(page);
 
-    await page.waitForSelector('input[type="file"]', { state: "visible", timeout: 15000 });
+    await page.waitForSelector('input[type="file"]', { state: 'visible', timeout: 15000 });
 
     // Upload file
     await page.setInputFiles('input[type="file"]', filepath);
@@ -127,19 +133,19 @@ export class BanxicoAutomation {
     await emailInput.fill(email);
 
     // Select format
-    const formatMap = { pdf: "1", xml: "2", ambos: "3" };
+    const formatMap = { pdf: '1', xml: '2', ambos: '3' };
     await page.selectOption('select[name="formato"]', formatMap[format]);
 
     // Handle button interaction with enhanced human behavior
     const submitBtn = page.locator('input[type="button"][value="Cargar archivo"]#btn_grupo-footer');
 
     // Verify button exists and is visible
-    await submitBtn.waitFor({ state: "visible", timeout: 10000 });
+    await submitBtn.waitFor({ state: 'visible', timeout: 10000 });
 
     // Get button position
     const box = await submitBtn.boundingBox();
     if (!box) {
-      throw new Error("No se pudo obtener la posición del botón");
+      throw new Error('No se pudo obtener la posición del botón');
     }
 
     // Move mouse to button area in human-like manner
@@ -153,24 +159,27 @@ export class BanxicoAutomation {
     try {
       await submitBtn.click({ timeout: 5000 });
     } catch (error) {
-      console.warn("[WARN] Clic directo falló, intentando con force...");
+      logger.warn({ cepId: this.cepId }, 'Clic directo fallo, intentando con force');
       await submitBtn.click({ force: true, timeout: 5000 });
     }
 
     try {
       // Wait for either upload page or error
       await Promise.race([
-        page.waitForURL("**/upload*", { timeout: 30000 }),
+        page.waitForURL('**/upload*', { timeout: 30000 }),
         page.waitForFunction(
           () => {
             const body = document.body.innerText;
-            return body.includes("Token:") || body.includes("Ha ocurrido un error");
+            return body.includes('Token:') || body.includes('Ha ocurrido un error');
           },
           { timeout: 30000 }
         ),
       ]);
     } catch (error) {
-      console.warn("[WARN] Timeout esperando navegación, verificando contenido actual...");
+      logger.warn(
+        { cepId: this.cepId },
+        'Timeout esperando navegacion, verificando contenido actual'
+      );
     }
 
     // Additional wait for page to stabilize
@@ -178,7 +187,6 @@ export class BanxicoAutomation {
 
     // Extract token from page
     const content = await page.content();
-    console.log(`[DEBUG] URL actual: ${page.url()}`);
 
     // Multiple token extraction patterns for robustness
     const tokenPatterns = [
@@ -190,20 +198,16 @@ export class BanxicoAutomation {
     let tokenMatch = null;
     for (const pattern of tokenPatterns) {
       tokenMatch = content.match(pattern);
-      if (tokenMatch) {
-        console.log(`[INFO] Token encontrado con patrón: ${pattern}`);
-        break;
-      }
     }
 
     if (tokenMatch && tokenMatch[1]) {
       const token = tokenMatch[1].trim();
-      console.log(`[SUCCESS] Token extraído: ${token}`);
+      logger.info({ cepId: this.cepId, token }, 'Token extraido');
       return token;
     }
 
-    if (content.includes("Ha ocurrido un error al procesar su solicitud")) {
-      throw new Error("ERROR_BANXICO_GENERICO");
+    if (content.includes('Ha ocurrido un error al procesar su solicitud')) {
+      throw new Error('ERROR_BANXICO_GENERICO');
     }
 
     // Check if still on form page (click didn't work)
@@ -211,18 +215,20 @@ export class BanxicoAutomation {
     if (isFormPage) {
       // Take screenshot for debugging
       if (isDev) {
-        await page.screenshot({ path: `debug_form_fail_${this.cepId}.png`, fullPage: true });
+        await page.screenshot({
+          path: FileManager.getScreenshotPath(`debug_form_fail_${this.cepId}.png`),
+          fullPage: true,
+        });
       }
-      throw new Error("El formulario no se envió correctamente - aún en página de carga");
+      throw new Error('El formulario no se envio correctamente - aun en página de carga');
     }
 
     // Save page content for debugging
     if (isDev) {
-      const fs = require("fs");
-      fs.writeFileSync(`debug_no_token_${this.cepId}.html`, content);
+      fs.writeFileSync(FileManager.getScreenshotPath(`debug_no_token_${this.cepId}.html`), content);
     }
 
-    throw new Error("Token no encontrado después del envío del formulario");
+    throw new Error('Token no encontrado despues del envio del formulario');
   }
 
   /**
@@ -234,15 +240,15 @@ export class BanxicoAutomation {
     token: string,
     pauseSeconds: number
   ): Promise<string> {
-    console.log(`[INFO] Consultando token ${token}...`);
+    logger.info({ cepId: this.cepId, token }, 'Consultando token');
 
     await page.click('a[href="inicio2.do"]');
-    await page.waitForLoadState("domcontentloaded");
+    await page.waitForLoadState('domcontentloaded');
     await simulateHumanActivity(page);
 
     // Fill email
     const emailField = page.locator('input[type="email"][name="correo"]');
-    await emailField.waitFor({ state: "visible", timeout: 10000 });
+    await emailField.waitFor({ state: 'visible', timeout: 10000 });
     await emailField.click();
     await page.waitForTimeout(300);
     await emailField.fill(email);
@@ -256,7 +262,7 @@ export class BanxicoAutomation {
     await page.waitForTimeout(500);
 
     // Wait for reCAPTCHA
-    console.log(`[INFO] Esperando resolución de CAPTCHA (${pauseSeconds}s)...`);
+    logger.info({ cepId: this.cepId, pauseSeconds }, 'Esperando resolucion de CAPTCHA');
     await page.waitForTimeout(pauseSeconds * 1000);
     await waitForRecaptcha(page, 5000);
 
@@ -265,38 +271,41 @@ export class BanxicoAutomation {
     await consultarBtn.scrollIntoViewIfNeeded();
     await page.waitForTimeout(500);
 
-    console.log("[INFO] Consultando resultado...");
+    logger.info({ cepId: this.cepId }, 'Consultando resultado');
     await consultarBtn.click();
 
-    await page.waitForLoadState("networkidle", { timeout: 60000 });
+    await page.waitForLoadState('networkidle', { timeout: 60000 });
     await page.waitForTimeout(2000);
 
     const htmlAfterQuery = await page.content();
-    if (htmlAfterQuery.includes("Ha ocurrido un error") || (await page.title()).includes("ERROR")) {
-      throw new Error("ERROR_BANXICO_CONSULTA: Error al consultar el token");
+    if (htmlAfterQuery.includes('Ha ocurrido un error') || (await page.title()).includes('ERROR')) {
+      throw new Error('ERROR_BANXICO_CONSULTA: Error al consultar el token');
     }
 
     // Wait for download button
-    console.log("[INFO] Esperando botón de descarga...");
+    logger.info({ cepId: this.cepId }, 'Esperando boton de descarga');
     try {
       await page.waitForSelector('input[type="button"][value="Descargar"]', {
-        state: "visible",
+        state: 'visible',
         timeout: 20000,
       });
     } catch {
       if (isDev) {
-        await page.screenshot({ path: `debug_no_download_btn_${this.cepId}.png`, fullPage: true });
+        await page.screenshot({
+          path: FileManager.getScreenshotPath(`debug_no_download_btn_${this.cepId}.png`),
+          fullPage: true,
+        });
       }
-      throw new Error("Botón de descarga no encontrado - verificar estado del proceso");
+      throw new Error('Botón de descarga no encontrado - verificar estado del proceso');
     }
 
     // Start download
-    console.log(`[INFO] Iniciando descarga del archivo...`);
-    const downloadPromise = page.waitForEvent("download", { timeout: 60000 });
+    logger.info({ cepId: this.cepId }, 'Iniciando descarga del archivo');
+    const downloadPromise = page.waitForEvent('download', { timeout: 60000 });
     await page.click('input[type="button"][value="Descargar"]');
 
     const download = await downloadPromise;
-    const finalDownloadPath = FileManager.getTempDownloadPath(`${this.cepId}.zip`);
+    const finalDownloadPath = FileManager.getDownloadPath(`${this.cepId}.zip`);
     await download.saveAs(finalDownloadPath);
 
     return finalDownloadPath;
@@ -311,14 +320,18 @@ export class BanxicoAutomation {
     format: FormatType = FormatType.BOTH,
     pauseSeconds: number = 10,
     browserType: BrowserType = BrowserType.CHROMIUM,
-    useHeadless: boolean = true
+    useHeadless: boolean = true,
+    maxRetries: number = 3
   ): Promise<AutomationResult> {
     const BrowserEngine = this.getBrowserEngine(browserType);
     let token: string | undefined;
     let finalDownloadPath: string | undefined;
 
     try {
-      console.log(`[INFO] Iniciando automatización con ${browserType} (Headless: ${useHeadless})`);
+      logger.info(
+        { cepId: this.cepId, browserType, useHeadless },
+        'Iniciando automatizacion Banxico'
+      );
 
       this.browser = await BrowserEngine.launch(this.getLaunchOptions(browserType, useHeadless));
       const context = await this.browser.newContext(this.getContextOptions(browserType));
@@ -326,58 +339,66 @@ export class BanxicoAutomation {
 
       // Stealth scripts
       await page.addInitScript(() => {
-        Object.defineProperty(navigator, "webdriver", { get: () => undefined });
+        Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
         // @ts-ignore
         window.navigator.chrome = { runtime: {} };
       });
 
-      console.log(`[INFO] Navegando a Banxico...`);
-      await page.goto("https://www.banxico.org.mx/cep-scl/", { waitUntil: "domcontentloaded", timeout: 30000 });
+      logger.info({ cepId: this.cepId }, 'Navegando a Banxico');
+      await page.goto('https://www.banxico.org.mx/cep-scl/', {
+        waitUntil: 'domcontentloaded',
+        timeout: 30000,
+      });
       await page.waitForTimeout(2000);
 
       // Phase 1: Upload
-      const maxRetries = 3;
       for (let i = 1; i <= maxRetries; i++) {
         try {
-          console.log(`[INFO] Intento ${i}/${maxRetries} de carga de archivo...`);
+          logger.info({ cepId: this.cepId, attempt: i, maxRetries }, 'Intento de carga de archivo');
           token = await this.uploadFileAndGetToken(page, filepath, email, format);
-          console.log(`[SUCCESS] Token obtenido: ${token}`);
+          logger.info({ cepId: this.cepId, token }, 'Token obtenido');
           break;
         } catch (err: any) {
           if (i === maxRetries) throw err;
-          console.warn(`[WARN] Intento ${i} fallido: ${err.message}. Reintentando...`);
-          await page.goto("https://www.banxico.org.mx/cep-scl/inicio.do");
+          logger.warn(
+            { cepId: this.cepId, attempt: i, error: err.message },
+            'Intento de carga fallido, reintentando'
+          );
+          await page.goto('https://www.banxico.org.mx/cep-scl/inicio.do');
           await page.waitForTimeout(2000);
         }
       }
 
-      if (!token) throw new Error("No se pudo obtener el token");
+      if (!token) throw new Error('No se pudo obtener el token');
 
       // Phase 2: Return to main page
-      console.log("[INFO] Regresando a página principal...");
+      logger.info({ cepId: this.cepId }, 'Regresando a pagina principal');
       try {
         await page.click('input[type="button"][value="Regresar"]');
         await page.waitForTimeout(2000);
       } catch {
-        await page.goto("https://www.banxico.org.mx/cep-scl/");
+        await page.goto('https://www.banxico.org.mx/cep-scl/');
         await page.waitForTimeout(2000);
       }
 
       // Phase 3: Query and download
       for (let i = 1; i <= maxRetries; i++) {
         try {
-          console.log(`[INFO] Intento ${i}/${maxRetries} de descarga...`);
+          logger.info({ cepId: this.cepId, attempt: i, maxRetries }, 'Intento de descarga');
           finalDownloadPath = await this.attemptQueryAndDownload(page, email, token, pauseSeconds);
-          console.log(`[SUCCESS] Archivo descargado en: ${finalDownloadPath}`);
+          logger.info({ cepId: this.cepId, finalDownloadPath }, 'Archivo descargado');
           break;
         } catch (err: any) {
           if (i === maxRetries) throw err;
-          console.warn(`[WARN] Intento de descarga ${i} fallido: ${err.message}. Reintentando...`);
-          await page.goto("https://www.banxico.org.mx/cep-scl/inicio2.do");
+          logger.warn(
+            { cepId: this.cepId, attempt: i, error: err.message },
+            'Intento de descarga fallido, reintentando'
+          );
+          await page.goto('https://www.banxico.org.mx/cep-scl/inicio2.do');
         }
       }
 
-      if (!finalDownloadPath) throw new Error("No se pudo descargar el archivo");
+      if (!finalDownloadPath) throw new Error('No se pudo descargar el archivo');
 
       await this.browser.close();
 
@@ -389,7 +410,7 @@ export class BanxicoAutomation {
       };
     } catch (error: any) {
       if (this.browser) await this.browser.close();
-      console.error(`[ERROR] Automatización fallida: ${error.message}`);
+      logger.error({ cepId: this.cepId, error: error.message }, 'Automatizacion fallida');
       throw error;
     }
   }

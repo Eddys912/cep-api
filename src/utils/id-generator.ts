@@ -1,3 +1,5 @@
+import { getMexicoDateTimeISO, getMexicoTodayDate } from '@utils/date-yesterday';
+
 /**
  * Generates a unique identifier in the format: YYYYMMDD-HHMMSS-XXX
  * Where YYYYMMDD can be provided, HHMMSS is the current time, and XXX is random.
@@ -5,14 +7,14 @@
  * @returns {string} Unique identifier
  */
 export function generateId(dateStr?: string): string {
-  const now = new Date();
-  
+  const nowMexico = getMexicoDateTimeISO();
+
   // Use provided date (removing dashes) or current date
-  const date = dateStr ? dateStr.replace(/-/g, "") : now.toISOString().slice(0, 10).replace(/-/g, "");
-  
+  const date = dateStr ? dateStr.replace(/-/g, '') : getMexicoTodayDate().replace(/-/g, '');
+
   // Use time with hours, minutes, seconds: HHMMSS
-  const time = now.toTimeString().split(' ')[0].replace(/:/g, "");
-  
+  const time = nowMexico.split('T')[1]?.replace(/:/g, '') ?? '000000';
+
   const random = Math.random().toString(36).substring(2, 5).toUpperCase();
   return `${date}-${time}-${random}`;
 }

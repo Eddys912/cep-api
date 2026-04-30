@@ -1,54 +1,43 @@
-import { CepTypeStatus, FormatType } from "./global.enums";
+import { CepTypeStatus, FormatType } from './global.enums';
 
 /**
- * Electronic payment record from Supabase
+ * Parsed row for Banxico TXT output (comma-separated chain line).
+ * Internal contract — Spanish field names only on external API payloads.
  */
-export interface ElectronicPayment {
-  fecha_pago: string;
-  clave_rastreo: string;
-  clave_institucion_emisora: string;
-  clave_institucion_receptora: string;
-  cuenta_beneficiario: string;
-  monto: string;
+export interface BanxicoTxtRow {
+  paymentDate: string;
+  trackingKey: string;
+  senderInstitutionCode: string;
+  receiverInstitutionCode: string;
+  beneficiaryAccount: string;
+  amount: string;
 }
 
 /**
- * Single cadena item from the external API response
+ * Normalized chain item after mapping external.
  */
-export interface CadenaCep {
-  cadena: string;
+export interface CepChainItem {
+  chain: string;
 }
 
 /**
- * Response from the external API get-cadenas-cep
+ * Response from the external API get-cadenas-cep (Spanish keys as returned by the provider).
  */
 export interface ExternalBatchResponse {
   numero_dias_atras: number;
   fecha_operacion: string;
   total: number;
-  data: CadenaCep[];
+  data: unknown[];
 }
 
 /**
- * Record for storing a CEP batch/lote in the database
+ * Canonical internal contract for CEP batches.
  */
-export interface CepBatchRecord {
-  id?: string;
-  fecha_operacion: string;
-  numero_dias_atras: number;
+export interface InternalCepBatch {
+  operationDate: string;
   total: number;
-  cadenas: string[];
-  created_at?: string;
-}
-
-/**
- * Request payload for CEP generation
- */
-export interface CepRequest {
-  email: string;
-  format: FormatType;
-  start_date?: string;
-  end_date?: string;
+  payments: CepChainItem[];
+  daysBack?: number;
 }
 
 /**
@@ -57,16 +46,7 @@ export interface CepRequest {
 export interface CepDaysRequest {
   email: string;
   format: FormatType;
-  numero_dias_atras: number;
-}
-
-/**
- * Request payload for CEP generation by a specific date
- */
-export interface CepDateRequest {
-  email: string;
-  format: FormatType;
-  fecha_operacion: string;
+  daysBack: number;
 }
 
 /**
@@ -83,19 +63,19 @@ export interface CepMissingRequest {
  * Internal status tracking for CEP jobs
  */
 export interface CepStatus {
-  cep_id: string;
+  cepId: string;
   status: CepTypeStatus;
-  created_at: string;
-  completed_at?: string;
+  createdAt: string;
+  completedAt?: string;
   email: string;
   format: FormatType;
-  start_date?: string;
-  end_date?: string;
-  fecha_operacion?: string;
-  numero_dias_atras?: number;
-  records_processed?: number;
-  input_file_path?: string;
-  banxico_result_path?: string;
+  startDate?: string;
+  endDate?: string;
+  operationDate?: string;
+  daysBack?: number;
+  recordsProcessed?: number;
+  inputFilePath?: string;
+  banxicoResultPath?: string;
   token?: string;
   error?: string;
 }
@@ -117,33 +97,12 @@ export interface CepStatusResponse {
   status: CepTypeStatus;
   created_at: string;
   completed_at?: string;
-  fecha_operacion?: string;
-  numero_dias_atras?: number;
+  operation_date?: string;
+  days_back?: number;
   records_processed?: number;
   token?: string;
   error?: string;
   download_available: boolean;
-}
-
-/**
- * Response for listing all CEPs
- */
-export interface CepListResponse {
-  total: number;
-  ceps: CepSummary[];
-}
-
-/**
- * Summary information for a CEP job
- */
-export interface CepSummary {
-  cep_id: string;
-  status: CepTypeStatus;
-  created_at: string;
-  completed_at?: string;
-  email: string;
-  records_processed?: number;
-  fecha_operacion?: string;
 }
 
 /**

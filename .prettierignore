@@ -1,0 +1,8 @@
+dist
+node_modules
+coverage
+.husky
+.vscode
+**/*.md
+src/docs
+src/routes.ts

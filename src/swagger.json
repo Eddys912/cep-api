@@ -1,0 +1,712 @@
+{
+	"openapi": "3.0.0",
+	"components": {
+		"examples": {},
+		"headers": {},
+		"parameters": {},
+		"requestBodies": {},
+		"responses": {},
+		"schemas": {
+			"WebhookResponse": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"internalMessage": {
+						"type": "string"
+					},
+					"processingTimeMs": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {}
+				},
+				"required": [
+					"success",
+					"message",
+					"internalMessage",
+					"processingTimeMs"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"StpPayload": {
+				"description": "Represents a raw STP webhook payload.",
+				"properties": {
+					"id": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "number",
+								"format": "double"
+							}
+						]
+					},
+					"claveRastreo": {
+						"type": "string"
+					},
+					"fechaOperacion": {
+						"anyOf": [
+							{
+								"type": "string"
+							},
+							{
+								"type": "number",
+								"format": "double"
+							}
+						]
+					},
+					"tsLiquidacion": {
+						"type": "string"
+					},
+					"institucionOrdenante": {
+						"type": "string"
+					},
+					"institucionBeneficiaria": {
+						"type": "string"
+					},
+					"monto": {
+						"type": "number",
+						"format": "double"
+					},
+					"nombreOrdenante": {
+						"type": "string"
+					},
+					"tipoCuentaOrdenante": {
+						"type": "string"
+					},
+					"cuentaOrdenante": {
+						"type": "string"
+					},
+					"rfcCurpOrdenante": {
+						"type": "string"
+					},
+					"nombreBeneficiario": {
+						"type": "string"
+					},
+					"tipoCuentaBeneficiario": {
+						"type": "string"
+					},
+					"cuentaBeneficiario": {
+						"type": "string"
+					},
+					"nombreBeneficiario2": {
+						"type": "string"
+					},
+					"tipoCuentaBeneficiario2": {
+						"type": "string"
+					},
+					"cuentaBeneficiario2": {
+						"type": "string"
+					},
+					"rfcCurpBeneficiario": {
+						"type": "string"
+					},
+					"conceptoPago": {
+						"type": "string"
+					},
+					"referenciaNumerica": {
+						"type": "string"
+					},
+					"empresa": {
+						"type": "string"
+					},
+					"tipoPago": {
+						"type": "string"
+					},
+					"folioCodi": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"id",
+					"claveRastreo",
+					"fechaOperacion",
+					"tsLiquidacion",
+					"institucionOrdenante",
+					"institucionBeneficiaria",
+					"monto",
+					"nombreOrdenante",
+					"tipoCuentaOrdenante",
+					"cuentaOrdenante",
+					"rfcCurpOrdenante",
+					"nombreBeneficiario",
+					"tipoCuentaBeneficiario",
+					"cuentaBeneficiario",
+					"rfcCurpBeneficiario",
+					"conceptoPago",
+					"referenciaNumerica",
+					"empresa",
+					"tipoPago"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"PaymentResult": {
+				"properties": {
+					"success": {
+						"type": "boolean"
+					},
+					"message": {
+						"type": "string"
+					},
+					"internalMessage": {
+						"type": "string"
+					},
+					"claveRastreo": {
+						"type": "string"
+					},
+					"monto": {
+						"type": "number",
+						"format": "double"
+					},
+					"data": {},
+					"environment": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"success",
+					"message",
+					"internalMessage"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"HealthResponse": {
+				"properties": {
+					"status": {
+						"type": "string",
+						"enum": [
+							"ok"
+						],
+						"nullable": false
+					},
+					"environment": {
+						"type": "string"
+					},
+					"timestamp": {
+						"type": "string"
+					}
+				},
+				"required": [
+					"status",
+					"environment",
+					"timestamp"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CepTypeStatus": {
+				"description": "Status types for CEP processing jobs",
+				"enum": [
+					"pending",
+					"processing",
+					"completed",
+					"failed"
+				],
+				"type": "string"
+			},
+			"CepResponse": {
+				"description": "Response for CEP generation request",
+				"properties": {
+					"cep_id": {
+						"type": "string"
+					},
+					"message": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/CepTypeStatus"
+					}
+				},
+				"required": [
+					"cep_id",
+					"message",
+					"status"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CepErrorResponse": {
+				"description": "Error response format",
+				"properties": {
+					"error": {
+						"type": "string"
+					},
+					"code": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/CepTypeStatus"
+					}
+				},
+				"required": [
+					"error"
+				],
+				"type": "object",
+				"additionalProperties": false
+			},
+			"CepStatusResponse": {
+				"description": "Response for CEP status query",
+				"properties": {
+					"cep_id": {
+						"type": "string"
+					},
+					"status": {
+						"$ref": "#/components/schemas/CepTypeStatus"
+					},
+					"created_at": {
+						"type": "string"
+					},
+					"completed_at": {
+						"type": "string"
+					},
+					"operation_date": {
+						"type": "string"
+					},
+					"days_back": {
+						"type": "number",
+						"format": "double"
+					},
+					"records_processed": {
+						"type": "number",
+						"format": "double"
+					},
+					"token": {
+						"type": "string"
+					},
+					"error": {
+						"type": "string"
+					},
+					"download_available": {
+						"type": "boolean"
+					}
+				},
+				"required": [
+					"cep_id",
+					"status",
+					"created_at",
+					"download_available"
+				],
+				"type": "object",
+				"additionalProperties": false
+			}
+		},
+		"securitySchemes": {}
+	},
+	"info": {
+		"title": "CEP & STP API",
+		"version": "1.0.0",
+		"description": "API para gestión de CEPs de Banxico y webhooks STP",
+		"license": {
+			"name": "ISC"
+		},
+		"contact": {}
+	},
+	"paths": {
+		"/webhook/dzog-capital/payments": {
+			"post": {
+				"operationId": "ProcessDzogPayment",
+				"responses": {
+					"200": {
+						"description": "Payment processed",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/WebhookResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid payload"
+					},
+					"500": {
+						"description": "Processing error"
+					}
+				},
+				"description": "Receives STP payments for Dzog Capital and routes to the appropriate processor.",
+				"summary": "Process STP Payment (Dzog Capital)",
+				"tags": [
+					"STP Webhooks"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/StpPayload"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/webhook/aplicarPago": {
+			"post": {
+				"operationId": "ProcessStpPayment",
+				"responses": {
+					"200": {
+						"description": "Payment applied",
+						"content": {
+							"application/json": {
+								"schema": {
+									"allOf": [
+										{
+											"$ref": "#/components/schemas/PaymentResult"
+										},
+										{
+											"properties": {
+												"processingTimeMs": {
+													"type": "number",
+													"format": "double"
+												}
+											},
+											"required": [
+												"processingTimeMs"
+											],
+											"type": "object"
+										}
+									]
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Invalid payload"
+					},
+					"500": {
+						"description": "Processing error"
+					}
+				},
+				"description": "Receives STP payments for Sozu and applies payment through the Sozu pipeline.",
+				"summary": "Process STP Payment (Sozu)",
+				"tags": [
+					"STP Webhooks"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {
+								"$ref": "#/components/schemas/StpPayload"
+							}
+						}
+					}
+				}
+			}
+		},
+		"/health": {
+			"get": {
+				"operationId": "GetHealth",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/HealthResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Returns the current health status of the API.",
+				"summary": "Health Check",
+				"tags": [
+					"System"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
+		"/api/v1/ceps/health": {
+			"get": {
+				"operationId": "GetHealth",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"properties": {
+										"environment": {
+											"type": "string"
+										},
+										"timestamp": {
+											"type": "string"
+										},
+										"status": {
+											"type": "string",
+											"enum": [
+												"ok"
+											],
+											"nullable": false
+										}
+									},
+									"required": [
+										"environment",
+										"timestamp",
+										"status"
+									],
+									"type": "object"
+								}
+							}
+						}
+					}
+				},
+				"description": "Health check specific to the CEP subsystem.",
+				"summary": "CEP Health Check",
+				"tags": [
+					"CEP Banxico"
+				],
+				"security": [],
+				"parameters": []
+			}
+		},
+		"/api/v1/ceps/generate": {
+			"post": {
+				"operationId": "GenerateFromYesterday",
+				"responses": {
+					"202": {
+						"description": "Job accepted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No records found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "External API error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Generates CEP files from yesterday's data pulled from the external source.",
+				"summary": "Generate CEPs for Yesterday",
+				"tags": [
+					"CEP Banxico"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/ceps/generate-date": {
+			"post": {
+				"operationId": "GenerateFromSpecificDate",
+				"responses": {
+					"202": {
+						"description": "Job accepted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No records found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "External API error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Generates CEP files for a specific operation date.",
+				"summary": "Generate CEPs for a Specific Date",
+				"tags": [
+					"CEP Banxico"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/ceps/generate-missing": {
+			"post": {
+				"operationId": "GenerateMissing",
+				"responses": {
+					"202": {
+						"description": "Job accepted",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepResponse"
+								}
+							}
+						}
+					},
+					"400": {
+						"description": "Validation error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "No records found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					},
+					"502": {
+						"description": "External API error",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Processes a batch of missing CEP records (mismo contrato interno que generate-date: lote + data).",
+				"summary": "Generate Missing CEPs (lote)",
+				"tags": [
+					"CEP Banxico"
+				],
+				"security": [],
+				"parameters": [],
+				"requestBody": {
+					"required": true,
+					"content": {
+						"application/json": {
+							"schema": {}
+						}
+					}
+				}
+			}
+		},
+		"/api/v1/ceps/status/{cepId}": {
+			"get": {
+				"operationId": "GetCepStatus",
+				"responses": {
+					"200": {
+						"description": "Ok",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepStatusResponse"
+								}
+							}
+						}
+					},
+					"404": {
+						"description": "Job not found",
+						"content": {
+							"application/json": {
+								"schema": {
+									"$ref": "#/components/schemas/CepErrorResponse"
+								}
+							}
+						}
+					}
+				},
+				"description": "Returns the current status of a CEP generation job.",
+				"summary": "Get CEP Job Status",
+				"tags": [
+					"CEP Banxico"
+				],
+				"security": [],
+				"parameters": [
+					{
+						"in": "path",
+						"name": "cepId",
+						"required": true,
+						"schema": {
+							"type": "string"
+						}
+					}
+				]
+			}
+		}
+	},
+	"servers": [
+		{
+			"url": "/"
+		}
+	]
+}

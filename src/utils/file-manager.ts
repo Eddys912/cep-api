@@ -1,5 +1,5 @@
-import fs from "fs";
-import path from "path";
+import fs from 'fs';
+import path from 'path';
 
 export interface DirectoryInitResult {
   success: boolean;
@@ -14,12 +14,18 @@ export interface FileOperationResult {
 }
 
 export class FileManager {
-  private static readonly ROOT_DIR = process.env.NODE_ENV === "production" ? "/tmp" : process.cwd();
+  private static readonly ROOT_DIR = process.env.NODE_ENV === 'production' ? '/tmp' : process.cwd();
 
-  public static readonly OUTPUTS_DIR = path.join(FileManager.ROOT_DIR, "outputs");
+  public static readonly OUTPUTS_DIR = path.join(FileManager.ROOT_DIR, 'outputs');
+  public static readonly SCREENSHOTS_DIR = path.join(FileManager.ROOT_DIR, 'screenshots');
+  public static readonly DOWNLOADS_DIR = path.join(FileManager.ROOT_DIR, 'downloads');
 
   public static initializeDirectories(): DirectoryInitResult {
-    const directories = [FileManager.OUTPUTS_DIR];
+    const directories = [
+      FileManager.OUTPUTS_DIR,
+      FileManager.SCREENSHOTS_DIR,
+      FileManager.DOWNLOADS_DIR,
+    ];
     const created: string[] = [];
     const errors: Array<{ directory: string; error: string }> = [];
 
@@ -32,7 +38,7 @@ export class FileManager {
       } catch (error) {
         errors.push({
           directory: dir,
-          error: error instanceof Error ? error.message : "Unknown error",
+          error: error instanceof Error ? error.message : 'Unknown error',
         });
       }
     });
@@ -58,9 +64,17 @@ export class FileManager {
    * @param {string} filename - Filename
    * @returns {string} Temporary file path
    */
-  public static getTempDownloadPath(filename: string): string {
-    const tempDir = process.env.NODE_ENV === "production" ? "/tmp" : FileManager.ROOT_DIR;
-    return path.join(tempDir, filename);
+  public static getDownloadPath(filename: string): string {
+    return path.join(FileManager.DOWNLOADS_DIR, filename);
+  }
+
+  /**
+   * Gets a deterministic path for screenshots/debug artifacts.
+   * @param {string} filename - Screenshot/debug filename
+   * @returns {string} Full path to screenshot file
+   */
+  public static getScreenshotPath(filename: string): string {
+    return path.join(FileManager.SCREENSHOTS_DIR, filename);
   }
 
   /**
@@ -92,7 +106,7 @@ export class FileManager {
       return {
         success: false,
         path: filepath,
-        error: error instanceof Error ? error.message : "Unknown error",
+        error: error instanceof Error ? error.message : 'Unknown error',
       };
     }
   }
